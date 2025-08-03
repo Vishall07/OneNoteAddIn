@@ -1,0 +1,26 @@
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.tlb
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\Microsoft.Office.Interop.OneNote.dll
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.AssemblyReference.cache
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.ResolveComReference.cache
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.Properties.Resources.resources
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.TestForm.resources
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.GenerateResource.cache
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.CoreCompileInputs.cache
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNot.0228D662.Up2Date
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.tlb
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\Microsoft.Office.Interop.OneNote.dll
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.AssemblyReference.cache
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.ResolveComReference.cache
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.Properties.Resources.resources
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.TestForm.resources
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.GenerateResource.cache
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.CoreCompileInputs.cache
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNot.0228D662.Up2Date
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.pdb

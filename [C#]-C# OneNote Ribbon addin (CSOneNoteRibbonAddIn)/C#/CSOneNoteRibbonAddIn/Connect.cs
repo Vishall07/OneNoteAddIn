@@ -68,7 +68,7 @@ namespace CSOneNoteRibbonAddIn
 
         private void Button_Click(object sender, EventArgs e)
         {
-            label.Text = "Hello World";
+            label.Text = "Hello World from github repo";
         }
     }
 
