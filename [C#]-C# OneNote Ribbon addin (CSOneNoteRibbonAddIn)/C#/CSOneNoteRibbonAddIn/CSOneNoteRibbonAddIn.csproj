@@ -67,10 +67,11 @@
     <Compile Include="AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="ReadOnlyIStreamWrapper.cs" />
-    <Compile Include="Connect.cs">
+    <Compile Include="BookMark_Window.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ReadOnlyIStreamWrapper.cs" />
+    <Compile Include="Connect.cs" />
     <Compile Include="CWin32WindowWrapper.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -96,6 +97,9 @@
     </COMReference>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Connect.resx">
+      <DependentUpon>Connect.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

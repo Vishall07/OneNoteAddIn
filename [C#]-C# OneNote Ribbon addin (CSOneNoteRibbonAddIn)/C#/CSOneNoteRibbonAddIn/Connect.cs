@@ -19,7 +19,6 @@ namespace CSOneNoteRibbonAddIn
 {
     #region Imports directives
     using CSOneNoteRibbonAddIn.Properties;
-    using Extensibility;
     using Microsoft.Office.Core;
     using Microsoft.Office.Interop.OneNote;
     using System;
@@ -27,9 +26,10 @@ namespace CSOneNoteRibbonAddIn
     using System.IO;
     using System.Runtime.InteropServices;
     using System.Runtime.InteropServices.ComTypes;
-    using System.Threading;
     using System.Windows.Forms;
     using OneNote = Microsoft.Office.Interop.OneNote;
+    using System.Xml.Linq;
+    using System.Linq;
     #endregion
 
     #region Read me for Add-in installation and setup information.
@@ -41,36 +41,7 @@ namespace CSOneNoteRibbonAddIn
     // you will need to re-register the Add-in by building the CSOneNoteRibbonAddInSetup project, 
     // right click the project in the Solution Explorer, then choose install.
     #endregion
-    public class HelloWorldForm : Form
-    {
-        private Button button;
-        private Label label;
 
-        public HelloWorldForm()
-        {
-            this.Text = "Hello Form";
-            this.Width = 300;
-            this.Height = 200;
-
-            label = new Label();
-            label.Text = "Label";
-            label.Location = new System.Drawing.Point(100, 50);
-            label.AutoSize = true;
-
-            button = new Button();
-            button.Text = "Click Me";
-            button.Location = new System.Drawing.Point(100, 100);
-            button.Click += Button_Click;
-
-            this.Controls.Add(label);
-            this.Controls.Add(button);
-        }
-
-        private void Button_Click(object sender, EventArgs e)
-        {
-            label.Text = "Hello World from github repo";
-        }
-    }
 
     /// <summary>
     ///   The object for implementing an Add-in.
@@ -154,14 +125,7 @@ namespace CSOneNoteRibbonAddIn
         public void OnStartupComplete(ref Array custom)
         {
             /// Run the form on the UI thread
-            System.Threading.Thread thread = new System.Threading.Thread(() =>
-            {
-                System.Windows.Forms.Application.Run(new HelloWorldForm());
-            });
-            thread.SetApartmentState(System.Threading.ApartmentState.STA);
-            thread.Start();
-
-
+            //MessageBox.Show("CSOneNoteRibbonAddIn OnStartupComplete");
         }
 
         /// <summary>
@@ -193,7 +157,44 @@ namespace CSOneNoteRibbonAddIn
         /// <returns>string</returns>
         public string GetCustomUI(string RibbonID)
         {
-            return Properties.Resources.customUI;
+            return @"<customUI xmlns='http://schemas.microsoft.com/office/2009/07/customui' onLoad='OnRibbonLoad'>
+                      <ribbon>
+                        <tabs>
+                          <tab id='customTab' label='MyTab'>
+                            <group id='customGroup' label='My Group'>
+                              <button id='showFormButton'
+                                      label='Open Form'
+                                      imageMso='HappyFace'
+                                      size='large'
+                                      onAction='OnShowFormButtonClick' />
+                            </group>
+                          </tab>
+                        </tabs>
+                      </ribbon>
+                    </customUI>";
+        }
+        private IRibbonUI ribbon;
+
+        public void OnRibbonLoad(IRibbonUI ribbonUI)
+        {
+            ribbon = ribbonUI;
+        }
+
+        // This method name must match the XML "onAction" value!
+        public void OnShowFormButtonClick(IRibbonControl control)
+        {
+
+            System.Threading.Thread thread = new System.Threading.Thread(() =>
+            {
+                System.Windows.Forms.Application.EnableVisualStyles();
+                System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+
+                var form = new BookMark_Window();
+
+                System.Windows.Forms.Application.Run(form);
+            });
+            thread.SetApartmentState(System.Threading.ApartmentState.STA);
+            thread.Start();
         }
 
         /// <summary>
