@@ -4,7 +4,7 @@
 	 <tabs>
 	  <tab idMso="TabReviewWord">
 		 <group id="grpWordCounter" label="Statistics" insertAfterMso="GroupSpelling">
-       <button id="btnShowForm" label="Show Form" size="large" onAction="ShowForm" image="showform.png" screentip="Show windows form." />
+         <button id="btnShowForm" label="Show Form" size="large" onAction="ShowForm" image="showform.png" screentip="Show windows form." />
 		 </group >
 	  </tab>
 	 </tabs>
