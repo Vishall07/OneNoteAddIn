@@ -183,15 +183,72 @@ namespace CSOneNoteRibbonAddIn
         // This method name must match the XML "onAction" value!
         public void OnShowFormButtonClick(IRibbonControl control)
         {
-
             System.Threading.Thread thread = new System.Threading.Thread(() =>
             {
-                System.Windows.Forms.Application.EnableVisualStyles();
-                System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+                try
+                {
+                    System.Windows.Forms.Application.EnableVisualStyles();
+                    System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
 
-                var form = new BookMark_Window();
+                    var oneNoteApp = new Microsoft.Office.Interop.OneNote.Application();
+                    string hierarchyXml;
+                    oneNoteApp.GetHierarchy("", Microsoft.Office.Interop.OneNote.HierarchyScope.hsPages, out hierarchyXml);
 
-                System.Windows.Forms.Application.Run(form);
+                    // Here: Determine current selection - simplified for example
+                    string selectedId = null;
+                    string selectedScope = "Paragraph"; // default scope
+
+                    // Try to get current selection; if null, select first para id
+                    try
+                    {
+                        // Get current page id
+                        var window = oneNoteApp.Windows.CurrentWindow;
+                        string currentPageId = window.CurrentPageId;
+
+                        string pageXml;
+                        oneNoteApp.GetPageContent(currentPageId, out pageXml, Microsoft.Office.Interop.OneNote.PageInfo.piAll);
+
+                        var doc = new System.Xml.XmlDocument();
+                        doc.LoadXml(pageXml);
+                        var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
+                        nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
+
+                        // Try get selected paragraph ID, if fail get first paragraph node id
+                        var selectedOutline = doc.SelectSingleNode("//one:Outline[@selected='true']", nsmgr);
+                        if (selectedOutline != null)
+                        {
+                            selectedId = selectedOutline.Attributes["ID"]?.Value;
+                        }
+                        else
+                        {
+                            // Select first paragraph outline ID
+                            var firstOutline = doc.SelectSingleNode("//one:Outline", nsmgr);
+                            selectedId = firstOutline?.Attributes["ID"]?.Value;
+                        }
+
+                        if (string.IsNullOrEmpty(selectedId))
+                        {
+                            // fallback to current page id, scope page
+                            selectedId = currentPageId;
+                            selectedScope = "Page";
+                        }
+                    }
+                    catch
+                    {
+                        // default fallback
+                        selectedId = null;
+                        selectedScope = "Page";
+                    }
+
+                    string displayText = "Current Selection"; // Optionally get a name for UI
+
+                    var form = new BookMark_Window(selectedId, selectedScope, displayText);
+                    System.Windows.Forms.Application.Run(form);
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.Forms.MessageBox.Show("Error launching bookmark window: " + ex.Message);
+                }
             });
             thread.SetApartmentState(System.Threading.ApartmentState.STA);
             thread.Start();
