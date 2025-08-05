@@ -28,6 +28,7 @@ namespace CSOneNoteRibbonAddIn
     using System.Linq;
     using System.Runtime.InteropServices;
     using System.Runtime.InteropServices.ComTypes;
+    using System.Threading;
     using System.Windows.Forms;
     using System.Xml.Linq;
     using OneNote = Microsoft.Office.Interop.OneNote;
@@ -149,6 +150,9 @@ namespace CSOneNoteRibbonAddIn
 
         private object applicationObject;
         private object addInInstance;
+        private IRibbonUI ribbon;
+        private BookMark_Window bookmarkWindow;
+        private OneNote.Application oneNoteApp;
 
         /// <summary>
         ///     Loads the XML markup from an XML customization file 
@@ -156,65 +160,59 @@ namespace CSOneNoteRibbonAddIn
         /// </summary>
         /// <param name="RibbonID">The ID for the RibbonX UI</param>
         /// <returns>string</returns>
-        public string GetCustomUI(string RibbonID)
+        public string GetCustomUI(string ribbonID)
         {
             return @"<customUI xmlns='http://schemas.microsoft.com/office/2009/07/customui' onLoad='OnRibbonLoad'>
-              <ribbon>
-                <tabs>
-                  <tab idMso='TabHome'>
-                    <group id='customGroup' label='BookMark'>
-                      <button id='showFormButton'
-                              label='Save'
-                              imageMso='BookMark'
-                              size='large'
-                              onAction='OnShowFormButtonClick' />
-                    </group>
-                  </tab>
-                </tabs>
-              </ribbon>
-            </customUI>";
+                  <ribbon>
+                    <tabs>
+                      <tab idMso='TabHome'>
+                        <group id='customGroup' label='BookMark'>
+                          <button id='showFormButton'
+                                  label='Saved'
+                                  imageMso='BookmarkInsert'
+                                  size='large'
+                                  onAction='OnShowFormButtonClick' />
+                        </group>
+                      </tab>
+                    </tabs>
+                  </ribbon>
+                </customUI>";
         }
-        private IRibbonUI ribbon;
 
         public void OnRibbonLoad(IRibbonUI ribbonUI)
         {
             ribbon = ribbonUI;
         }
 
-        // This method name must match the XML "onAction" value!
         public void OnShowFormButtonClick(IRibbonControl control)
         {
-            System.Threading.Thread thread = new System.Threading.Thread(() =>
+            Thread thread = new Thread(() =>
             {
                 try
                 {
                     System.Windows.Forms.Application.EnableVisualStyles();
                     System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
 
-                    var oneNoteApp = new Microsoft.Office.Interop.OneNote.Application();
+                    var oneNoteApp = new OneNote.Application();
                     string hierarchyXml;
-                    oneNoteApp.GetHierarchy("", Microsoft.Office.Interop.OneNote.HierarchyScope.hsPages, out hierarchyXml);
+                    oneNoteApp.GetHierarchy("", HierarchyScope.hsPages, out hierarchyXml);
 
-                    // Here: Determine current selection - simplified for example
                     string selectedId = null;
-                    string selectedScope = "Paragraph"; // default scope
+                    string selectedScope = "Paragraph";
 
-                    // Try to get current selection; if null, select first para id
                     try
                     {
-                        // Get current page id
                         var window = oneNoteApp.Windows.CurrentWindow;
                         string currentPageId = window.CurrentPageId;
 
                         string pageXml;
-                        oneNoteApp.GetPageContent(currentPageId, out pageXml, Microsoft.Office.Interop.OneNote.PageInfo.piAll);
+                        oneNoteApp.GetPageContent(currentPageId, out pageXml, PageInfo.piAll);
 
                         var doc = new System.Xml.XmlDocument();
                         doc.LoadXml(pageXml);
                         var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
                         nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
 
-                        // Try get selected paragraph ID, if fail get first paragraph node id
                         var selectedOutline = doc.SelectSingleNode("//one:Outline[@selected='true']", nsmgr);
                         if (selectedOutline != null)
                         {
@@ -222,36 +220,56 @@ namespace CSOneNoteRibbonAddIn
                         }
                         else
                         {
-                            // Select first paragraph outline ID
                             var firstOutline = doc.SelectSingleNode("//one:Outline", nsmgr);
                             selectedId = firstOutline?.Attributes["ID"]?.Value;
                         }
 
                         if (string.IsNullOrEmpty(selectedId))
                         {
-                            // fallback to current page id, scope page
                             selectedId = currentPageId;
                             selectedScope = "Page";
                         }
                     }
                     catch
                     {
-                        // default fallback
                         selectedId = null;
                         selectedScope = "Page";
                     }
 
-                    string displayText = "Current Selection"; // Optionally get a name for UI
+                    string displayText = "Current Selection";
 
-                    var form = new BookMark_Window(selectedId, selectedScope, displayText);
+                    var form = new BookMark_Window(selectedId, selectedScope, displayText)
+                    {
+                        FormBorderStyle = FormBorderStyle.FixedToolWindow,
+                        StartPosition = FormStartPosition.Manual,
+                        TopMost = true
+                    };
+
+                    // Get mouse position (where the user clicked the Ribbon button)
+                    var cursorPos = Cursor.Position;
+
+                    // Position the form just below the button
+                    int x = cursorPos.X - (form.Width / 2); // Center the form horizontally on the cursor
+                    int y = cursorPos.Y + 40; // 10 pixels below the button
+
+                    // Ensure the form stays within the screen bounds
+                    var screen = Screen.FromPoint(cursorPos);
+                    if (x < screen.WorkingArea.Left) x = screen.WorkingArea.Left;
+                    if ((x + form.Width) > screen.WorkingArea.Right) x = screen.WorkingArea.Right - form.Width;
+                    if ((y + form.Height) > screen.WorkingArea.Bottom) y = screen.WorkingArea.Bottom - form.Height;
+
+                    form.Left = x;
+                    form.Top = y;
+
                     System.Windows.Forms.Application.Run(form);
                 }
                 catch (Exception ex)
                 {
-                    System.Windows.Forms.MessageBox.Show("Error launching bookmark window: " + ex.Message);
+                    MessageBox.Show("Error launching bookmark window: " + ex.Message);
                 }
             });
-            thread.SetApartmentState(System.Threading.ApartmentState.STA);
+
+            thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
         }
 
