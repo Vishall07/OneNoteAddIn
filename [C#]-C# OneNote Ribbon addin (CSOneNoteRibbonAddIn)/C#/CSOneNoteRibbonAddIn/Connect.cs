@@ -22,14 +22,15 @@ namespace CSOneNoteRibbonAddIn
     using Microsoft.Office.Core;
     using Microsoft.Office.Interop.OneNote;
     using System;
+    using System.Drawing;
     using System.Drawing.Imaging;
     using System.IO;
+    using System.Linq;
     using System.Runtime.InteropServices;
     using System.Runtime.InteropServices.ComTypes;
     using System.Windows.Forms;
-    using OneNote = Microsoft.Office.Interop.OneNote;
     using System.Xml.Linq;
-    using System.Linq;
+    using OneNote = Microsoft.Office.Interop.OneNote;
     #endregion
 
     #region Read me for Add-in installation and setup information.
@@ -158,20 +159,20 @@ namespace CSOneNoteRibbonAddIn
         public string GetCustomUI(string RibbonID)
         {
             return @"<customUI xmlns='http://schemas.microsoft.com/office/2009/07/customui' onLoad='OnRibbonLoad'>
-                      <ribbon>
-                        <tabs>
-                          <tab id='customTab' label='MyTab'>
-                            <group id='customGroup' label='My Group'>
-                              <button id='showFormButton'
-                                      label='Open Form'
-                                      imageMso='HappyFace'
-                                      size='large'
-                                      onAction='OnShowFormButtonClick' />
-                            </group>
-                          </tab>
-                        </tabs>
-                      </ribbon>
-                    </customUI>";
+              <ribbon>
+                <tabs>
+                  <tab idMso='TabHome'>
+                    <group id='customGroup' label='BookMark'>
+                      <button id='showFormButton'
+                              label='Save'
+                              imageMso='BookMark'
+                              size='large'
+                              onAction='OnShowFormButtonClick' />
+                    </group>
+                  </tab>
+                </tabs>
+              </ribbon>
+            </customUI>";
         }
         private IRibbonUI ribbon;
 
@@ -259,16 +260,19 @@ namespace CSOneNoteRibbonAddIn
         /// </summary>
         /// <param name="imageName">the image name in customUI.xml</param>
         /// <returns>memory stream contains image</returns>
-        public IStream OnGetImage(string imageName)
+        public Bitmap GetImage(IRibbonControl control)
         {
-            MemoryStream stream = new MemoryStream();
-            if (imageName == "showform.png")
+            if (control.Id == "showFormButton")
             {
-                Resources.ShowForm.Save(stream, ImageFormat.Png);
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                using (Stream stream = assembly.GetManifestResourceStream("CSOneNoteRibbonAddIn.showform.png"))
+                {
+                    return new Bitmap(stream);
+                }
             }
-
-            return new ReadOnlyIStreamWrapper(stream);
+            return null;
         }
+
 
         /// <summary>
         ///     show Windows Form method
