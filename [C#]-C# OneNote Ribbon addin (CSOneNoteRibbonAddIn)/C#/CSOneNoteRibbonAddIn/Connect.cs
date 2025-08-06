@@ -18,24 +18,15 @@ WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
 namespace CSOneNoteRibbonAddIn
 {
     #region Imports directives
-    using CSOneNoteRibbonAddIn.Properties;
     using Microsoft.Office.Core;
     using Microsoft.Office.Interop.OneNote;
-    using Newtonsoft.Json;
     using System;
-    using System.Collections.Generic;
-    using System.ComponentModel;
     using System.Drawing;
-    using System.Drawing.Imaging;
     using System.IO;
     using System.Linq;
     using System.Runtime.InteropServices;
-    using System.Runtime.InteropServices.ComTypes;
     using System.Threading;
     using System.Windows.Forms;
-    using System.Xml.Linq;
-    using static System.Net.Mime.MediaTypeNames;
-    using static System.Windows.Forms.VisualStyles.VisualStyleElement;
     using OneNote = Microsoft.Office.Interop.OneNote;
     
     #endregion
@@ -64,7 +55,6 @@ namespace CSOneNoteRibbonAddIn
         private IRibbonUI ribbon;
         private Thread _uiThread;
         private BookMark_Window _bookmarkWindow;
-        private OneNote.Application _oneNoteApp;
 
         /// <summary>
         ///		Implements the constructor for the Add-in object.
@@ -111,8 +101,6 @@ namespace CSOneNoteRibbonAddIn
             ref System.Array custom)
         {
             //MessageBox.Show("CSOneNoteRibbonAddIn OnDisconnection");
-            _uiThread.Abort();
-            _bookmarkWindow.Close();
             this.applicationObject = null;
             GC.Collect();
             GC.WaitForPendingFinalizers();
@@ -197,8 +185,8 @@ namespace CSOneNoteRibbonAddIn
         {
             try
             {
-                _oneNoteApp = new OneNote.Application();
-                var model = GetCurrentNotebookModel(_oneNoteApp);
+                var oneNoteApp = new OneNote.Application();
+                var model = GetCurrentNotebookModel(oneNoteApp);
                 if (model == null)
                 {
                     MessageBox.Show("Failed to load the current notebook model.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -234,31 +222,32 @@ namespace CSOneNoteRibbonAddIn
                     }));
                     return;
                 }
-
-                // If first time: start UI thread and create form
-                _uiThread = new Thread(() =>
+                else
                 {
-                    try
+                    // If first time: start UI thread and create form
+                    _uiThread = new Thread(() =>
                     {
-                        InitializeWindowsForms();
-                        _bookmarkWindow = CreateBookmarkWindow(
-                            selectedId, selectedScope, displayText,
-                            notebookName, notebookColor,
-                            sectionGroupName, sectionName, sectionColor,
-                            pageName, paraContent);
-                        PositionFormNearCursor(_bookmarkWindow);
+                        try
+                        {
+                            InitializeWindowsForms();
+                            _bookmarkWindow = CreateBookmarkWindow(
+                                selectedId, selectedScope, displayText,
+                                notebookName, notebookColor,
+                                sectionGroupName, sectionName, sectionColor,
+                                pageName, paraContent);
+                            PositionFormNearCursor(_bookmarkWindow);
 
-                        System.Windows.Forms.Application.Run(_bookmarkWindow);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Windows.Forms.MessageBox.Show("Error launching bookmark window: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                });
+                            System.Windows.Forms.Application.Run(_bookmarkWindow);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Windows.Forms.MessageBox.Show("Error launching bookmark window: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    });
 
-                _uiThread.SetApartmentState(ApartmentState.STA);
-                _uiThread.IsBackground = true;
-                _uiThread.Start();
+                    _uiThread.SetApartmentState(ApartmentState.STA);
+                    _uiThread.Start();
+                }
             }
             catch (Exception ex)
             {
@@ -402,97 +391,6 @@ namespace CSOneNoteRibbonAddIn
         {
             System.Windows.Forms.Application.EnableVisualStyles();
             System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
-        }
-
-        public void GetSelectedOutlineInfo(
-            OneNote.Application oneNoteApp,
-            out string selectedId, out string selectedScope,
-            out string notebookName, out string notebookColor,
-            out string sectionGroupName, out string sectionName, out string sectionColor,
-            out string pageName, out string paraContent)
-        {
-            // Initialize all out parameters
-            selectedId = selectedScope = notebookName = notebookColor = sectionGroupName = sectionName = sectionColor = pageName = paraContent = null;
-            selectedScope = "Paragraph"; // default scope
-
-            try
-            {
-                // 1. Get the full hierarchy XML (contains metadata about notebooks, sections, pages)
-                string hierarchyXml;
-                oneNoteApp.GetHierarchy("", HierarchyScope.hsPages, out hierarchyXml);
-                var hierarchyDoc = new System.Xml.XmlDocument();
-                hierarchyDoc.LoadXml(hierarchyXml);
-
-                // Extract the namespace URI dynamically for hierarchy XML
-                var hierarchyNsUri = hierarchyDoc.DocumentElement.NamespaceURI;
-                var nsmgrHierarchy = new System.Xml.XmlNamespaceManager(hierarchyDoc.NameTable);
-                nsmgrHierarchy.AddNamespace("one", hierarchyNsUri);
-
-                // 2. Get current window and page ID
-                var window = oneNoteApp.Windows.CurrentWindow;
-                string currentPageId = window.CurrentPageId;
-
-                // 3. Get the content XML of the current page
-                string pageXml;
-                oneNoteApp.GetPageContent(currentPageId, out pageXml, PageInfo.piAll);
-                var pageDoc = new System.Xml.XmlDocument();
-                pageDoc.LoadXml(pageXml);
-
-                // Extract the namespace URI dynamically for page XML
-                var pageNsUri = pageDoc.DocumentElement.NamespaceURI;
-                var nsmgrPage = new System.Xml.XmlNamespaceManager(pageDoc.NameTable);
-                nsmgrPage.AddNamespace("one", pageNsUri);
-
-                // 4. Extract page name from the page XML
-                var pageNode = pageDoc.SelectSingleNode("//one:Page", nsmgrPage);
-                pageName = pageNode?.Attributes["name"]?.Value;
-
-                // 5. Find selected outline node or fallback to first outline node
-                var selectedOutline = pageDoc.SelectSingleNode("//one:Outline[@selected='true']", nsmgrPage)
-                                     ?? pageDoc.SelectSingleNode("//one:Outline", nsmgrPage);
-
-                if (selectedOutline != null)
-                {
-                    selectedId = selectedOutline.Attributes["ID"]?.Value;
-                }
-                else
-                {
-                    // If no outline found, fallback to page ID and scope Page
-                    selectedId = currentPageId;
-                    selectedScope = "Page";
-                }
-
-                // 6. Extract paragraph content from outline (Text inside OE > T nodes)
-                var paraNode = selectedOutline?.SelectSingleNode(".//one:OE/one:T", nsmgrPage);
-                paraContent = paraNode?.InnerText;
-
-                // 7. Find the page node in the hierarchy XML (to get the section and notebook metadata)
-                var pageNodeInHierarchy = hierarchyDoc.SelectSingleNode($"//one:Page[@ID='{currentPageId}']", nsmgrHierarchy);
-
-                var sectionNode = pageNodeInHierarchy?.ParentNode;
-                sectionName = sectionNode?.Attributes["name"]?.Value;
-                sectionColor = sectionNode?.Attributes["color"]?.Value;
-                sectionGroupName = sectionNode?.ParentNode?.Attributes["name"]?.Value;
-
-                // Traverse up to find notebook node
-                var notebookNode = sectionNode;
-                while (notebookNode != null && notebookNode.Name != "one:Notebook")
-                {
-                    notebookNode = notebookNode.ParentNode;
-                }
-                notebookName = notebookNode?.Attributes["name"]?.Value;
-                notebookColor = notebookNode?.Attributes["color"]?.Value;
-            }
-            catch (Exception ex)
-            {
-                // Reset all outputs on exception
-                selectedId = null;
-                selectedScope = "Page";
-                notebookName = notebookColor = sectionGroupName = sectionName = sectionColor = pageName = paraContent = null;
-
-                // Optionally log the exception message here for diagnostics:
-                // Console.WriteLine("Exception in GetSelectedOutlineInfo: " + ex.Message);
-            }
         }
 
         public void GetSelectedOutlineInfo(OneNote.Application oneNoteApp, out string selectedId, out string selectedScope)

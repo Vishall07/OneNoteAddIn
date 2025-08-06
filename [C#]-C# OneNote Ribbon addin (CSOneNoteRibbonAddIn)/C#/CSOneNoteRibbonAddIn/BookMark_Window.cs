@@ -125,6 +125,13 @@ namespace CSOneNoteRibbonAddIn
                 this.pageName = pageName;
                 this.paraContent = paraContent;
 
+                // Enable drag-and-drop
+                grid.AllowDrop = true;
+                grid.MouseMove += Grid_MouseMove;
+                grid.DragOver += Grid_DragOver;
+                grid.DragDrop += Grid_DragDrop;
+                grid.MouseDown += Grid_MouseDown_StartDrag;
+
                 Application.AddMessageFilter(new CustomMessageFilter(this));
 
                 LoadTable();
@@ -146,6 +153,109 @@ namespace CSOneNoteRibbonAddIn
                 MessageBox.Show("Error initializing Bookmark window: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
+        #region
+        private bool IsDescendant(string sourceId, string potentialAncestorId)
+        {
+            var item = items.FirstOrDefault(i => i.Id == sourceId);
+            while (item != null && item.ParentId != null)
+            {
+                if (item.ParentId == potentialAncestorId)
+                    return true;
+                item = items.FirstOrDefault(i => i.Id == item.ParentId);
+            }
+            return false;
+        }
+
+        private void Grid_DragDrop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(string)))
+            {
+                string draggedId = (string)e.Data.GetData(typeof(string));
+
+                // Figure out what was dropped on
+                Point clientPoint = grid.PointToClient(new Point(e.X, e.Y));
+                var hitTest = grid.HitTest(clientPoint.X, clientPoint.Y);
+
+                if (hitTest.RowIndex >= 0)
+                {
+                    string targetId = grid.Rows[hitTest.RowIndex].Cells["Id"].Value?.ToString();
+                    var draggedItem = items.FirstOrDefault(i => i.Id == draggedId);
+                    var targetItem = items.FirstOrDefault(i => i.Id == targetId);
+
+                    if (draggedItem == null || targetItem == null)
+                        return;
+
+                    // Only allow dropping onto folders.
+                    if (targetItem.Type != "Folder")
+                    {
+                        MessageBox.Show("You may only move items into folders.");
+                        return;
+                    }
+
+                    // Prevent invalid moves
+                    if (draggedItem.Id == targetItem.Id ||
+                        IsDescendant(draggedItem.Id, targetItem.Id))
+                    {
+                        MessageBox.Show("Cannot move a folder into itself or its descendant.");
+                        return;
+                    }
+
+                    // Perform move
+                    draggedItem.ParentId = targetItem.Id;
+                    SaveToFile();
+                    RefreshGridDisplay();
+                }
+                else
+                {
+                    // Drop to empty space = move to root
+                    var draggedItem = items.FirstOrDefault(i => i.Id == draggedId);
+                    if (draggedItem != null)
+                    {
+                        draggedItem.ParentId = null;
+                        SaveToFile();
+                        RefreshGridDisplay();
+                    }
+                }
+            }
+        }
+
+        private void Grid_DragOver(object sender, DragEventArgs e)
+        {
+            e.Effect = DragDropEffects.Move;
+        }
+
+        private void Grid_MouseMove(object sender, MouseEventArgs e)
+        {
+            if ((e.Button & MouseButtons.Left) == MouseButtons.Left)
+            {
+                // Only start on significant movement
+                if (Math.Abs(e.X - dragStart.X) > SystemInformation.DragSize.Width ||
+                    Math.Abs(e.Y - dragStart.Y) > SystemInformation.DragSize.Height)
+                {
+                    if (grid.SelectedRows.Count > 0)
+                    {
+                        var row = grid.SelectedRows[0];
+                        var dragData = row.Cells["Id"].Value?.ToString();
+                        if (!string.IsNullOrEmpty(dragData))
+                        {
+                            grid.DoDragDrop(dragData, DragDropEffects.Move);
+                        }
+                    }
+                }
+            }
+        }
+        private Point dragStart;
+
+        private void Grid_MouseDown_StartDrag(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+                dragStart = new Point(e.X, e.Y);
+        }
+
+
+
+        #endregion
 
         // Data class representing folder or bookmark
         private class BookmarkItem
