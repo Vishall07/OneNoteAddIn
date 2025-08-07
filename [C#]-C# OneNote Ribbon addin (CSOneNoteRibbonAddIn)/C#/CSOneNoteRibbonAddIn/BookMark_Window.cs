@@ -26,14 +26,9 @@ namespace CSOneNoteRibbonAddIn
         private string pageName;
         private string paraContent;
         private Label labelNotebook, labelSection, labelPage, labelPara;
-
-        // New: list to hold both folders and bookmarks
+        private const int ResizeBorder = 6; 
         private List<BookmarkItem> items = new List<BookmarkItem>();
-
-        // New: To track unique ids / folders/bookmarks - simple guid generator usage
-        private int idCounter = 1;
-
-        // ContextMenu
+        private Point dragStart;
         private ContextMenuStrip contextMenu;
 
         public BookMark_Window(
@@ -50,22 +45,20 @@ namespace CSOneNoteRibbonAddIn
         {
             try
             {
-                // Initialize all labels (you should create and position them as you wish, example below)
-                label = new Label { Location = new Point(20, 50), AutoSize = true };
-                labelNotebook = new Label { Location = new Point(20, 30), AutoSize = true };
-                labelSection = new Label { Location = new Point(20, 70), AutoSize = true };
-                labelPage = new Label { Location = new Point(20, 90), AutoSize = true };
-                labelPara = new Label { Location = new Point(20, 110), AutoSize = true };
+                // Initialize labels
+                label = new Label { Location = new Point(20, 12), AutoSize = true };
 
-                // Window base settings
+                // Window settings: borderless, rounded, resizable
                 this.FormBorderStyle = FormBorderStyle.None;
                 this.Width = 600;
                 this.Height = 400;
                 this.TopMost = true;
                 this.BackColor = Color.White;
                 this.Padding = new Padding(1);
+                this.ControlBox = false;
+                this.Text = "";
 
-                // Rounded corners and border
+                // Rounded corners and border drawing
                 this.Paint += (s, e) =>
                 {
                     using (Pen pen = new Pen(Color.Black, 1))
@@ -76,33 +69,48 @@ namespace CSOneNoteRibbonAddIn
                     }
                 };
 
+                // ComboBox setup
                 comboScope = new ComboBox() { Location = new Point(90, 12), Width = 120 };
                 comboScope.Items.AddRange(new string[] { "Paragraph", "Page", "Section", "Notebook" });
                 comboScope.SelectedItem = onenoteScope;
+
+                // Save and Delete buttons
                 btnSave = new Button() { Location = new Point(220, 11), Text = "Save", Width = 90 };
                 btnSave.Click += BtnSave_Click;
+
                 btnDelete = new Button() { Location = new Point(320, 11), Text = "Delete", Width = 90 };
                 btnDelete.Click += BtnDelete_Click;
+
+                // DataGridView initialization
                 grid = new DataGridView()
                 {
                     Location = new Point(20, 130),
-                    Width = 550,
-                    Height = 220,
+                    Width = this.ClientSize.Width - 40,
+                    Height = this.ClientSize.Height - 160,
                     ReadOnly = true,
                     AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                     SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                    MultiSelect = false
+                    MultiSelect = false,
+                    AllowDrop = true,
+                    AllowUserToResizeColumns = true,
+                    AllowUserToOrderColumns = true,
+                    RowHeadersVisible = false
                 };
-                grid.CellDoubleClick += Grid_CellDoubleClick;
 
-                // Add context menu for folder/bookmark operations
+                grid.CellDoubleClick += Grid_CellDoubleClick;
+                grid.MouseDown += Grid_MouseDown;
+                grid.MouseDown += Grid_MouseDown_StartDrag;
+                grid.MouseMove += Grid_MouseMove;
+                grid.DragOver += Grid_DragOver;
+                grid.DragDrop += Grid_DragDrop;
+
+                // Context menu for folder/bookmark operations
                 contextMenu = new ContextMenuStrip();
                 contextMenu.Items.Add("New Folder", null, NewFolder_Click);
                 contextMenu.Items.Add("Rename", null, Rename_Click);
                 contextMenu.Items.Add("Delete", null, Delete_Click);
 
-                grid.MouseDown += Grid_MouseDown;
-
+                // Add controls
                 Controls.Add(label);
                 Controls.Add(comboScope);
                 Controls.Add(btnSave);
@@ -113,10 +121,20 @@ namespace CSOneNoteRibbonAddIn
                 Controls.Add(labelPage);
                 Controls.Add(labelPara);
 
+                // Resize event to dynamically adjust grid size and redraw borders
+                this.Resize += (s, e) =>
+                {
+                    grid.Width = this.ClientSize.Width - 40;
+                    grid.Height = this.ClientSize.Height - 160;
+                    this.Invalidate();
+                };
+
+                // Store parameters
                 selectedId = onenoteId;
                 selectedScope = onenoteScope;
                 selectedText = displayText;
                 tablePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bookmarks.txt");
+                this.label.Text = "Current Selection: ";
                 this.notebookName = notebookName;
                 this.notebookColor = notebookColor;
                 this.sectionGroupName = sectionGroupName;
@@ -125,13 +143,7 @@ namespace CSOneNoteRibbonAddIn
                 this.pageName = pageName;
                 this.paraContent = paraContent;
 
-                // Enable drag-and-drop
-                grid.AllowDrop = true;
-                grid.MouseMove += Grid_MouseMove;
-                grid.DragOver += Grid_DragOver;
-                grid.DragDrop += Grid_DragDrop;
-                grid.MouseDown += Grid_MouseDown_StartDrag;
-
+                // Minimize window if clicked outside
                 Application.AddMessageFilter(new CustomMessageFilter(this));
 
                 LoadTable();
@@ -154,115 +166,43 @@ namespace CSOneNoteRibbonAddIn
             }
         }
 
-        #region
-        private bool IsDescendant(string sourceId, string potentialAncestorId)
+        // Custom resizing by overriding WndProc (handles borderless window resize)
+        protected override void WndProc(ref Message m)
         {
-            var item = items.FirstOrDefault(i => i.Id == sourceId);
-            while (item != null && item.ParentId != null)
+            base.WndProc(ref m);
+            if (m.Msg == 0x84) // WM_NCHITTEST
             {
-                if (item.ParentId == potentialAncestorId)
-                    return true;
-                item = items.FirstOrDefault(i => i.Id == item.ParentId);
-            }
-            return false;
-        }
+                Point pos = PointToClient(Cursor.Position);
+                int resizeDir = 0;
+                if (pos.X < ResizeBorder) resizeDir |= 1;
+                else if (pos.X > Width - ResizeBorder) resizeDir |= 2;
+                if (pos.Y < ResizeBorder) resizeDir |= 4;
+                else if (pos.Y > Height - ResizeBorder) resizeDir |= 8;
 
-        private void Grid_DragDrop(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(typeof(string)))
-            {
-                string draggedId = (string)e.Data.GetData(typeof(string));
-
-                // Figure out what was dropped on
-                Point clientPoint = grid.PointToClient(new Point(e.X, e.Y));
-                var hitTest = grid.HitTest(clientPoint.X, clientPoint.Y);
-
-                if (hitTest.RowIndex >= 0)
+                if (resizeDir != 0)
                 {
-                    string targetId = grid.Rows[hitTest.RowIndex].Cells["Id"].Value?.ToString();
-                    var draggedItem = items.FirstOrDefault(i => i.Id == draggedId);
-                    var targetItem = items.FirstOrDefault(i => i.Id == targetId);
-
-                    if (draggedItem == null || targetItem == null)
-                        return;
-
-                    // Only allow dropping onto folders.
-                    if (targetItem.Type != "Folder")
+                    switch (resizeDir)
                     {
-                        MessageBox.Show("You may only move items into folders.");
-                        return;
-                    }
-
-                    // Prevent invalid moves
-                    if (draggedItem.Id == targetItem.Id ||
-                        IsDescendant(draggedItem.Id, targetItem.Id))
-                    {
-                        MessageBox.Show("Cannot move a folder into itself or its descendant.");
-                        return;
-                    }
-
-                    // Perform move
-                    draggedItem.ParentId = targetItem.Id;
-                    SaveToFile();
-                    RefreshGridDisplay();
-                }
-                else
-                {
-                    // Drop to empty space = move to root
-                    var draggedItem = items.FirstOrDefault(i => i.Id == draggedId);
-                    if (draggedItem != null)
-                    {
-                        draggedItem.ParentId = null;
-                        SaveToFile();
-                        RefreshGridDisplay();
+                        case 5: m.Result = (IntPtr)13; break; // top-left
+                        case 6: m.Result = (IntPtr)14; break; // top-right
+                        case 9: m.Result = (IntPtr)16; break; // bottom-left
+                        case 10: m.Result = (IntPtr)17; break; // bottom-right
+                        case 1: m.Result = (IntPtr)10; break; // left
+                        case 2: m.Result = (IntPtr)11; break; // right
+                        case 4: m.Result = (IntPtr)12; break; // top
+                        case 8: m.Result = (IntPtr)15; break; // bottom
+                        default: m.Result = (IntPtr)0; break;
                     }
                 }
             }
         }
 
-        private void Grid_DragOver(object sender, DragEventArgs e)
-        {
-            e.Effect = DragDropEffects.Move;
-        }
-
-        private void Grid_MouseMove(object sender, MouseEventArgs e)
-        {
-            if ((e.Button & MouseButtons.Left) == MouseButtons.Left)
-            {
-                // Only start on significant movement
-                if (Math.Abs(e.X - dragStart.X) > SystemInformation.DragSize.Width ||
-                    Math.Abs(e.Y - dragStart.Y) > SystemInformation.DragSize.Height)
-                {
-                    if (grid.SelectedRows.Count > 0)
-                    {
-                        var row = grid.SelectedRows[0];
-                        var dragData = row.Cells["Id"].Value?.ToString();
-                        if (!string.IsNullOrEmpty(dragData))
-                        {
-                            grid.DoDragDrop(dragData, DragDropEffects.Move);
-                        }
-                    }
-                }
-            }
-        }
-        private Point dragStart;
-
-        private void Grid_MouseDown_StartDrag(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left)
-                dragStart = new Point(e.X, e.Y);
-        }
-
-
-
-        #endregion
-
-        // Data class representing folder or bookmark
+        // BookmarkItem class to represent folders/bookmarks
         private class BookmarkItem
         {
             public string Type { get; set; } // "Folder" or "Bookmark"
             public string Name { get; set; }
-            public string ParentId { get; set; } // null or string for root level
+            public string ParentId { get; set; } // null means root level
             public string Id { get; set; }
             public string NotebookName { get; set; }
             public string NotebookColor { get; set; }
@@ -273,6 +213,7 @@ namespace CSOneNoteRibbonAddIn
             public string ParaContent { get; set; }
         }
 
+        // Update display and internal data after selection or changes
         public void UpdateBookmarkInfo(
             string newSelectedId,
             string newSelectedScope,
@@ -347,12 +288,11 @@ namespace CSOneNoteRibbonAddIn
                     return;
                 }
 
-                // Add as Bookmark under root (or you may select a folder - here we put under root for simplicity)
                 var newBookmark = new BookmarkItem
                 {
                     Type = "Bookmark",
                     Name = selectedText ?? "Unnamed Bookmark",
-                    ParentId = null, // top level by default; extend if you want to assign selected folder
+                    ParentId = null,
                     Id = selectedId,
                     NotebookName = notebookName,
                     NotebookColor = notebookColor,
@@ -363,7 +303,6 @@ namespace CSOneNoteRibbonAddIn
                     ParaContent = paraContent
                 };
 
-                // Avoid duplicates: Remove existing bookmark with same Id
                 items.RemoveAll(i => i.Type == "Bookmark" && i.Id == newBookmark.Id);
                 items.Add(newBookmark);
 
@@ -395,7 +334,6 @@ namespace CSOneNoteRibbonAddIn
                 return;
             }
 
-            // Remove item and all children if folder
             RemoveItemAndChildren(itemId);
 
             SaveToFile();
@@ -413,7 +351,6 @@ namespace CSOneNoteRibbonAddIn
                 items.Remove(item);
                 if (item.Type == "Folder")
                 {
-                    // Recursively remove children
                     var children = items.Where(c => c.ParentId == item.Id).Select(c => c.Id).ToList();
                     foreach (var childId in children)
                         RemoveItemAndChildren(childId);
@@ -434,7 +371,6 @@ namespace CSOneNoteRibbonAddIn
 
                 foreach (var line in lines)
                 {
-                    // Format: Type,Id,ParentId,Name,NotebookName,NotebookColor,SectionGroupName,SectionName,SectionColor,PageName,ParaContent
                     var parts = line.Split(new[] { ',' }, 11);
                     if (parts.Length == 11)
                     {
@@ -514,7 +450,6 @@ namespace CSOneNoteRibbonAddIn
             grid.Columns.Add("PageName", "Page Name");
             grid.Columns.Add("ParaContent", "Paragraph Content");
 
-            // Flatten the hierarchy with indentation
             var flatList = FlattenForDisplay(null, 0);
 
             foreach (var item in flatList)
@@ -537,7 +472,6 @@ namespace CSOneNoteRibbonAddIn
         {
             var result = new List<BookmarkItem>();
 
-            // Get folders first
             var folders = items.Where(i => i.ParentId == parentId && i.Type == "Folder")
                                .OrderBy(i => i.Name).ToList();
 
@@ -547,7 +481,6 @@ namespace CSOneNoteRibbonAddIn
                 result.AddRange(FlattenForDisplay(folder.Id, depth + 1));
             }
 
-            // Then add bookmarks under this parent
             var bookmarks = items.Where(i => i.ParentId == parentId && i.Type == "Bookmark")
                                  .OrderBy(i => i.Name).ToList();
 
@@ -589,13 +522,11 @@ namespace CSOneNoteRibbonAddIn
 
                     if (item.Type == "Bookmark")
                     {
-                        // Navigate to the actual OneNote location (sample)
                         var app = new Microsoft.Office.Interop.OneNote.Application();
                         app.NavigateTo(id);
                     }
                     else if (item.Type == "Folder")
                     {
-                        // Optional: implement collapse/expand logic by filtering items - for simplicity, no expand/collapse here
                         MessageBox.Show("Folder double-clicked: " + item.Name);
                     }
                 }
@@ -620,16 +551,113 @@ namespace CSOneNoteRibbonAddIn
             }
         }
 
-        // Context Menu Handlers
+        // Drag and drop handlers
+        private void Grid_MouseDown_StartDrag(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+                dragStart = new Point(e.X, e.Y);
+        }
 
+        private void Grid_MouseMove(object sender, MouseEventArgs e)
+        {
+            if ((e.Button & MouseButtons.Left) == MouseButtons.Left)
+            {
+                if (Math.Abs(e.X - dragStart.X) > SystemInformation.DragSize.Width ||
+                    Math.Abs(e.Y - dragStart.Y) > SystemInformation.DragSize.Height)
+                {
+                    if (grid.SelectedRows.Count > 0)
+                    {
+                        var row = grid.SelectedRows[0];
+                        var dragData = row.Cells["Id"].Value?.ToString();
+                        if (!string.IsNullOrEmpty(dragData))
+                        {
+                            grid.DoDragDrop(dragData, DragDropEffects.Move);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void Grid_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(string)))
+            {
+                e.Effect = DragDropEffects.Move;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+        }
+
+        private void Grid_DragDrop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(string)))
+            {
+                string draggedId = (string)e.Data.GetData(typeof(string));
+
+                Point clientPoint = grid.PointToClient(new Point(e.X, e.Y));
+                var hitTest = grid.HitTest(clientPoint.X, clientPoint.Y);
+
+                var draggedItem = items.FirstOrDefault(i => i.Id == draggedId);
+                if (draggedItem == null) return;
+
+                if (hitTest.RowIndex >= 0)
+                {
+                    string targetId = grid.Rows[hitTest.RowIndex].Cells["Id"].Value?.ToString();
+                    var targetItem = items.FirstOrDefault(i => i.Id == targetId);
+
+                    if (targetItem == null) return;
+
+                    if (targetItem.Type == "Folder")
+                    {
+                        if (draggedItem.Id == targetItem.Id || IsDescendant(draggedItem.Id, targetItem.Id))
+                        {
+                            MessageBox.Show("Cannot move a folder into itself or its descendant.");
+                            return;
+                        }
+                        draggedItem.ParentId = targetItem.Id;
+                    }
+                    else
+                    {
+                        if (draggedItem.Id == targetItem.Id || IsDescendant(draggedItem.Id, targetItem.ParentId))
+                        {
+                            MessageBox.Show("Cannot move a folder into itself or its descendant.");
+                            return;
+                        }
+                        draggedItem.ParentId = targetItem.ParentId;
+                    }
+                }
+                else
+                {
+                    draggedItem.ParentId = null;
+                }
+
+                SaveToFile();
+                RefreshGridDisplay();
+            }
+        }
+
+        private bool IsDescendant(string sourceId, string potentialAncestorId)
+        {
+            var item = items.FirstOrDefault(i => i.Id == sourceId);
+            while (item != null && item.ParentId != null)
+            {
+                if (item.ParentId == potentialAncestorId)
+                    return true;
+                item = items.FirstOrDefault(i => i.Id == item.ParentId);
+            }
+            return false;
+        }
+
+        // Context menu handlers
         private void NewFolder_Click(object sender, EventArgs e)
         {
             var currentRow = GetSelectedItem();
-            string parentId = currentRow?.Id; // new folder under selected folder or null if selected is bookmark or none
+            string parentId = currentRow?.Id;
 
             if (currentRow != null && currentRow.Type == "Bookmark")
             {
-                // Parent is the parent of bookmark's folder, or null
                 parentId = currentRow.ParentId;
             }
 
@@ -673,7 +701,6 @@ namespace CSOneNoteRibbonAddIn
             if (string.IsNullOrEmpty(newName) || newName == oldName)
                 return;
 
-            // Update item name
             currentRow.Name = newName;
             SaveToFile();
             RefreshGridDisplay();
@@ -694,7 +721,7 @@ namespace CSOneNoteRibbonAddIn
             return items.FirstOrDefault(i => i.Id == id);
         }
 
-        // Helper for simple input dialog for rename (used in Rename_Click)
+        // Helper dialog for rename prompt
         public static class Prompt
         {
             public static string ShowDialog(string text, string caption, string defaultText)
@@ -721,52 +748,5 @@ namespace CSOneNoteRibbonAddIn
                 return prompt.ShowDialog() == DialogResult.OK ? inputBox.Text : null;
             }
         }
-    }
-
-    public class CustomMessageFilter : IMessageFilter
-    {
-        private readonly Form _form;
-
-        public CustomMessageFilter(Form form)
-        {
-            _form = form;
-        }
-
-        public bool PreFilterMessage(ref Message m)
-        {
-            const int WM_LBUTTONDOWN = 0x0201; // Left mouse button down
-            const int WM_RBUTTONDOWN = 0x0204; // Right mouse button down
-
-            if (m.Msg == WM_LBUTTONDOWN || m.Msg == WM_RBUTTONDOWN)
-            {
-                // Get mouse position in screen coordinates
-                Point mousePos = Control.MousePosition;
-
-                // If mouse click is outside the form bounds
-                if (!_form.Bounds.Contains(mousePos))
-                {
-                    // Minimize the form immediately
-                    _form.WindowState = FormWindowState.Minimized;
-                }
-            }
-
-            return false;
-        }
-    }
-
-    static class GraphicsExtension
-    {
-        public static void DrawRoundedRectangle(this Graphics g, Pen p, int x, int y, int width, int height, int radius)
-        {
-            using (var path = new System.Drawing.Drawing2D.GraphicsPath())
-            {
-                path.AddArc(x, y, radius, radius, 180, 90);
-                path.AddArc(x + width - radius, y, radius, radius, 270, 90);
-                path.AddArc(x + width - radius, y + height - radius, radius, radius, 0, 90);
-                path.AddArc(x, y + height - radius, radius, radius, 90, 90);
-                path.CloseAllFigures();
-                g.DrawPath(p, path);
-            }
-        }
-    }
+    }  
 }
