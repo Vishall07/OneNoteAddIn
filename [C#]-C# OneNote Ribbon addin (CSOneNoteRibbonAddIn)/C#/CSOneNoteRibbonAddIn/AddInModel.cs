@@ -41,4 +41,7 @@ namespace CSOneNoteRibbonAddIn
         public string Id { get; set; } = "";
         public string Name { get; set; } = "";  // paragraph content (text)
     }
+    // BookmarkItem class
+ 
+
 }

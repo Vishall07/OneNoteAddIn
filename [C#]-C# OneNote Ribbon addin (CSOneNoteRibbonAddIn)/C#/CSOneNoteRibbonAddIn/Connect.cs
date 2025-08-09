@@ -27,6 +27,7 @@ namespace CSOneNoteRibbonAddIn
     using System.Runtime.InteropServices;
     using System.Threading;
     using System.Windows.Forms;
+    using System.Xml;
     using OneNote = Microsoft.Office.Interop.OneNote;
     
     #endregion
@@ -197,28 +198,27 @@ namespace CSOneNoteRibbonAddIn
                 string selectedId = model.Page?.Id ?? "";
                 string selectedScope = "page"; // or whatever your scope is
                 string displayText = model.Page?.Name ?? "";
-
                 string notebookName = model.NotebookName ?? "";
                 string notebookColor = model.NotebookColor ?? "";
-
                 string sectionGroupName = model.SectionGroup?.Name ?? "";
                 string sectionName = model.Section?.Name ?? "";
                 string sectionColor = model.Section?.Color ?? "";
-
                 string pageName = model.Page?.Name ?? "";
                 string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "";
 
-                // If the form and thread are already created and alive
                 if (_uiThread != null && _uiThread.IsAlive && _bookmarkWindow != null)
                 {
                     _bookmarkWindow.Invoke((Action)(() =>
                     {
+
                         _bookmarkWindow.UpdateBookmarkInfo(
                             selectedId, selectedScope, displayText,
                             notebookName, notebookColor,
                             sectionGroupName, sectionName, sectionColor,
                             pageName, paraContent);
+
                         _bookmarkWindow.Activate();
+                        _bookmarkWindow.BringToFront();
                     }));
                     return;
                 }
@@ -255,7 +255,6 @@ namespace CSOneNoteRibbonAddIn
             }
         }
 
-
         #region Helper Methods
         public AddInModel GetCurrentNotebookModel(OneNote.Application oneNoteApp)
         {
@@ -276,7 +275,7 @@ namespace CSOneNoteRibbonAddIn
                 // Get current page id
                 var window = oneNoteApp.Windows.CurrentWindow;
                 string currentPageId = window.CurrentPageId;
-
+               
                 // Find current page node
                 var pageNode = doc.SelectSingleNode($"//one:Page[@ID='{currentPageId}']", nsmgr);
                 if (pageNode == null)
