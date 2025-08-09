@@ -217,6 +217,7 @@ namespace CSOneNoteRibbonAddIn
                             sectionGroupName, sectionName, sectionColor,
                             pageName, paraContent);
 
+                        _bookmarkWindow.Show();
                         _bookmarkWindow.Activate();
                         _bookmarkWindow.BringToFront();
                     }));
@@ -238,6 +239,9 @@ namespace CSOneNoteRibbonAddIn
                             PositionFormNearCursor(_bookmarkWindow);
 
                             System.Windows.Forms.Application.Run(_bookmarkWindow);
+                            _bookmarkWindow.Show();
+                            _bookmarkWindow.Activate();
+                            _bookmarkWindow.BringToFront();
                         }
                         catch (Exception ex)
                         {
@@ -470,6 +474,30 @@ namespace CSOneNoteRibbonAddIn
 
         public void PositionFormNearCursor(Form form)
         {
+            string tablePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "window_info.txt");
+
+            if (File.Exists(tablePath))
+            {
+                // Read saved position and size
+                string[] lines = File.ReadAllLines(tablePath);
+                if (lines.Length == 4 &&
+                    int.TryParse(lines[0], out int left) &&
+                    int.TryParse(lines[1], out int top) &&
+                    int.TryParse(lines[2], out int width) &&
+                    int.TryParse(lines[3], out int height))
+                {
+                    form.Left = left;
+                    form.Top = top;
+                    form.Width = width;
+                    form.Height = height;
+                    // Hook event handlers to save position and size when form changes
+                    form.ResizeEnd += (sender, e) => SaveFormPositionAndSize(form, tablePath);
+                    form.Move += (sender, e) => SaveFormPositionAndSize(form, tablePath);
+                    return;
+                }
+            }
+
+            // If no saved data, use default positioning logic
             var cursorPos = Cursor.Position;
 
             int x = cursorPos.X - (form.Width / 2);
@@ -486,6 +514,23 @@ namespace CSOneNoteRibbonAddIn
 
             form.Left = x;
             form.Top = y;
+            // Hook event handlers to save position and size when form changes
+            form.ResizeEnd += (sender, e) => SaveFormPositionAndSize(form, tablePath);
+            form.Move += (sender, e) => SaveFormPositionAndSize(form, tablePath);
+            form.Show();
+        }
+
+        private void SaveFormPositionAndSize(Form form, string filePath)
+        {
+            string[] lines = new string[4]
+            {
+                form.Left.ToString(),
+                form.Top.ToString(),
+                form.Width.ToString(),
+                form.Height.ToString()
+            };
+
+            File.WriteAllLines(filePath, lines);
         }
 
 

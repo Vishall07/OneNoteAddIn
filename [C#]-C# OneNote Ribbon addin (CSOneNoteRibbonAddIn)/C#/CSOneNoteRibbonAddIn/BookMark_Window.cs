@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using System.Xml.Linq;
 
 namespace CSOneNoteRibbonAddIn
 {
@@ -58,21 +60,43 @@ namespace CSOneNoteRibbonAddIn
                 comboScope.Items.AddRange(new[] {
                     "Current Paragraph", "Current Section Group", "Current Section", "Current Page", "Current Notebook"
                 });
+                comboScope.SelectedIndex = 0;
 
-                btnSave = new Button { Location = new Point(180, 12), Text = "Save", Width = 80 };
+                comboScope.Width = 180;
+                comboScope.Font = new Font("Segoe UI", 10);
+                btnSave = new Button
+                {
+                    Location = new Point(220, 12),
+                    Text = "💾 Save",
+                    Width = 80,
+                    Height = 25,
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.Transparent,
+                    TextAlign = ContentAlignment.TopCenter, // Ensures text is centered vertically/horizontally
+                    Padding = new Padding(0) // No extra space inside the button
+                };
+                btnSave.FlatAppearance.BorderSize = 0;
+                btnSave.FlatAppearance.MouseOverBackColor = Color.Transparent; 
+                btnSave.FlatAppearance.MouseDownBackColor = Color.Transparent; 
                 btnSave.Click += BtnSave_Click;
+                btnSave.Click += BtnSave_Click;
+                btnSave.FlatStyle = FlatStyle.Flat;
+                btnSave.FlatAppearance.BorderSize = 0;
+                btnSave.BackColor = Color.Transparent;
+                btnSave.Text = "💾 Save"; // Use only icon, or set Text as well if you want both.
 
                 grid = new DataGridView
                 {
-                    Location = new Point(20, 40),
-                    Width = this.ClientSize.Width - 20,
+                    Location = new Point(20, 45),
+                    Width = this.ClientSize.Width - 40,
                     Height = this.ClientSize.Height - 10,
                     AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                     SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                     AllowDrop = true,
                     AllowUserToResizeColumns = true,
                     AllowUserToOrderColumns = true,
-                    RowHeadersVisible = false
+                    RowHeadersVisible = false,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
                 };
                 grid.MouseDown += Grid_MouseDown;
                 grid.MouseDown += Grid_MouseDown_StartDrag;
@@ -83,7 +107,7 @@ namespace CSOneNoteRibbonAddIn
                 grid.CellDoubleClick += Grid_CellDoubleClick;
                 grid.ColumnHeaderMouseClick += grid_ColumnHeaderMouseClick;
                 grid.KeyDown += Grid_KeyDown;
-
+ 
                 contextMenu = new ContextMenuStrip();
                 contextMenu.Items.Add("New Folder", null, NewFolder_Click);
                 contextMenu.Items.Add("Rename", null, Rename_Click);
@@ -109,6 +133,8 @@ namespace CSOneNoteRibbonAddIn
                 this.sectionColor = sectionColor;
                 this.pageName = pageName;
                 this.paraContent = paraContent;
+                this.Font = new Font("Segoe UI", 10);
+                this.BackColor = ColorTranslator.FromHtml("#f3f3f3");
 
                 LoadTable();
                 UpdateBookmarkInfo(selectedId, selectedScope, selectedText, notebookName, notebookColor,
@@ -118,6 +144,30 @@ namespace CSOneNoteRibbonAddIn
             {
                 MessageBox.Show("Error initializing Bookmark window: " + ex.Message);
             }
+        }
+
+        private void ApplyRoundedCorners(int radius)
+        {
+            var path = new GraphicsPath();
+            int diameter = radius * 2;
+            var rect = new Rectangle(0, 0, this.Width, this.Height);
+
+            // Top-left corner
+            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
+            // Top-right corner
+            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
+            // Bottom-right corner
+            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
+            // Bottom-left corner
+            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+
+            this.Region = new Region(path);
+        }
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            ApplyRoundedCorners(8);
         }
 
         // BookmarkItem class
@@ -219,7 +269,6 @@ namespace CSOneNoteRibbonAddIn
 
                 string bookmarkName;
                 string selected = comboScope.SelectedItem as string;
-                MessageBox.Show(selected);
 
                 switch (selected)
                 {
@@ -265,6 +314,7 @@ namespace CSOneNoteRibbonAddIn
                 SaveToFile();
                 cachedList = null;  // reset cached list on data change
                 RefreshGridDisplay();
+                this.Hide();
             }
             catch (Exception ex)
             {
@@ -424,6 +474,7 @@ namespace CSOneNoteRibbonAddIn
                         cachedList = null;
                     }
                 }
+                RefreshGridDisplay();
             }
             catch (Exception ex)
             {
@@ -467,6 +518,12 @@ namespace CSOneNoteRibbonAddIn
                 grid.Columns["Name"].ReadOnly = false;
                 grid.KeyDown += Grid_KeyDown;
 
+                grid.BackgroundColor = ColorTranslator.FromHtml("#f3f3f3");
+                grid.BorderStyle = BorderStyle.None;
+                grid.DefaultCellStyle.Font = new Font("Segoe UI", 10);
+                grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+                grid.DefaultCellStyle.SelectionBackColor = ColorTranslator.FromHtml("#ddd9ec");
+                grid.DefaultCellStyle.SelectionForeColor = Color.Black;
                 if (grid.Columns.Contains("Name"))
                     grid.Columns["Name"].SortMode = DataGridViewColumnSortMode.NotSortable;
 
@@ -509,6 +566,7 @@ namespace CSOneNoteRibbonAddIn
                         }
                     }
                 }
+
             }
             catch (Exception ex)
             {
@@ -558,6 +616,10 @@ namespace CSOneNoteRibbonAddIn
                         }
                     }
                     e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.Escape)
+                {
+                    this.Hide();
                 }
             }
             catch (Exception ex)
@@ -649,12 +711,7 @@ namespace CSOneNoteRibbonAddIn
         }
         private string IndentName(string name, int depth, bool isFolder = false, bool expanded = true)
         {
-            string icon = "";
-            if (isFolder)
-            {
-                icon = expanded ? "▼ " : "► "; // *** visual arrow for expand/collapse
-            }
-            return new string(' ', depth * 4) + icon + name;
+            return new string(' ', depth * 4) + (isFolder ? (expanded ? "📂 " : "📁 ") : "") + name;
         }
         private void Grid_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
@@ -853,7 +910,7 @@ namespace CSOneNoteRibbonAddIn
 
             var nameColIndex = grid.Columns["Name"]?.Index ?? -1;
             if (nameColIndex < 0) return;
-
+            grid.Rows[rowIndex].Cells[nameColIndex].Value = "";
             grid.CurrentCell = grid.Rows[rowIndex].Cells[nameColIndex];
             grid.BeginEdit(true);
         }
@@ -872,11 +929,26 @@ namespace CSOneNoteRibbonAddIn
         }
         protected override void WndProc(ref Message m)
         {
-            base.WndProc(ref m);
-            if (m.Msg == 0x84) // WM_NCHITTEST
+            const int WM_NCHITTEST = 0x84;
+            const int WM_ACTIVATEAPP = 0x001C;
+
+            // --- Handle "click outside" to hide form ---
+            if (m.Msg == WM_ACTIVATEAPP)
+            {
+                bool active = m.WParam != IntPtr.Zero;
+                if (!active)
+                {
+                    this.Hide();
+                }
+            }
+
+            // --- Keep your resize handling ---
+            if (m.Msg == WM_NCHITTEST)
             {
                 Point pos = PointToClient(Cursor.Position);
                 int resizeDir = 0;
+                int ResizeBorder = 8; // Set your custom border size
+
                 if (pos.X < ResizeBorder) resizeDir |= 1;
                 else if (pos.X > Width - ResizeBorder) resizeDir |= 2;
                 if (pos.Y < ResizeBorder) resizeDir |= 4;
@@ -886,19 +958,21 @@ namespace CSOneNoteRibbonAddIn
                 {
                     switch (resizeDir)
                     {
-                        case 5: m.Result = (IntPtr)13; break; // top-left
-                        case 6: m.Result = (IntPtr)14; break; // top-right
-                        case 9: m.Result = (IntPtr)16; break; // bottom-left
-                        case 10: m.Result = (IntPtr)17; break; // bottom-right
-                        case 1: m.Result = (IntPtr)10; break; // left
-                        case 2: m.Result = (IntPtr)11; break; // right
-                        case 4: m.Result = (IntPtr)12; break; // top
-                        case 8: m.Result = (IntPtr)15; break; // bottom
-                        default: m.Result = (IntPtr)0; break;
+                        case 5: m.Result = (IntPtr)13; return; // top-left
+                        case 6: m.Result = (IntPtr)14; return; // top-right
+                        case 9: m.Result = (IntPtr)16; return; // bottom-left
+                        case 10: m.Result = (IntPtr)17; return; // bottom-right
+                        case 1: m.Result = (IntPtr)10; return; // left
+                        case 2: m.Result = (IntPtr)11; return; // right
+                        case 4: m.Result = (IntPtr)12; return; // top
+                        case 8: m.Result = (IntPtr)15; return; // bottom
                     }
                 }
             }
+
+            base.WndProc(ref m);
         }
+
         public static class Prompt
         {
             public static string ShowDialog(string text, string caption, string defaultText)
