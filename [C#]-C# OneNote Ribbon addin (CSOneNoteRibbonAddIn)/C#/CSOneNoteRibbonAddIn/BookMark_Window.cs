@@ -18,21 +18,15 @@ namespace CSOneNoteRibbonAddIn
         private string selectedScope;
         private string selectedText;
         private string tablePath;
-        private string notebookName;
-        private string notebookColor;
-        private string sectionGroupName;
-        private string sectionName;
-        private string sectionColor;
-        private string pageName;
-        private string paraContent;
+        private string notebookName, notebookColor, sectionGroupName, sectionName, sectionColor, pageName, paraContent;
         private Label labelNotebook, labelSection, labelPage, labelPara;
         private const int ResizeBorder = 6;
         private List<BookmarkItem> items = new List<BookmarkItem>();
         private Point dragStart;
         private ContextMenuStrip contextMenu;
-
         private bool sortAscending = true;
-        private List<BookmarkItem> cachedList; // cache current flattened list upon sorting toggle
+        private List<BookmarkItem> cachedList;
+        private bool showingAlphabetical = false;
 
         public BookMark_Window(
             string onenoteId,
@@ -54,60 +48,32 @@ namespace CSOneNoteRibbonAddIn
                 this.Height = 300;
                 this.TopMost = true;
                 this.BackColor = Color.White;
-                this.Padding = new Padding(1);
-                this.ControlBox = false;
-                this.Text = "";
 
-                // Rounded corners and border drawing
-                this.Paint += (s, e) =>
-                {
-                    using (Pen pen = new Pen(Color.Black, 1))
-                    using (Graphics g = e.Graphics)
-                    {
-                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                        g.DrawRoundedRectangle(pen, 0, 0, this.Width - 1, this.Height - 1, 12);
-                    }
-                };
-
-                // Initialize labels (with meaningful positions)
-                label = new Label { Location = new Point(20, 50), AutoSize = true };
                 labelNotebook = new Label { Location = new Point(20, 30), AutoSize = true };
                 labelSection = new Label { Location = new Point(20, 70), AutoSize = true };
                 labelPage = new Label { Location = new Point(20, 90), AutoSize = true };
                 labelPara = new Label { Location = new Point(20, 110), AutoSize = true };
 
-                label.Visible = false;
-                labelNotebook.Visible = false;
-                labelSection.Visible = false;
-                labelPage.Visible = false;
-                labelPara.Visible = false;
+                comboScope = new ComboBox() { Location = new Point(20, 12), Width = 150 };
+                comboScope.Items.AddRange(new[] {
+                    "Current Paragraph", "Current Section Group", "Current Section", "Current Page", "Current Notebook"
+                });
 
-                // ComboBox setup
-                comboScope = new ComboBox() { Location = new Point(20, 12), Width = 120 };
-                comboScope.Items.AddRange(new string[] { "Current Paragraph", "Current Section Group", "Current Section", "Current Page", "Current Notebook" });
-                onenoteScope = comboScope.SelectedItem as string;
-                // Buttons
-                btnSave = new Button() { Location = new Point(160, 11), Text = "Save", Width = 90 };
+                btnSave = new Button { Location = new Point(180, 12), Text = "Save", Width = 80 };
                 btnSave.Click += BtnSave_Click;
 
-                // Grid setup
-                grid = new DataGridView()
+                grid = new DataGridView
                 {
                     Location = new Point(20, 40),
                     Width = this.ClientSize.Width - 20,
                     Height = this.ClientSize.Height - 10,
-                    ReadOnly = false,
                     AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                     SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                    MultiSelect = false,
                     AllowDrop = true,
                     AllowUserToResizeColumns = true,
                     AllowUserToOrderColumns = true,
-                    RowHeadersVisible = false,
-                    BackgroundColor = Color.White
+                    RowHeadersVisible = false
                 };
-
-                // Event wiring - drag-drop, clicks
                 grid.MouseDown += Grid_MouseDown;
                 grid.MouseDown += Grid_MouseDown_StartDrag;
                 grid.MouseMove += Grid_MouseMove;
@@ -115,42 +81,22 @@ namespace CSOneNoteRibbonAddIn
                 grid.DragDrop += Grid_DragDrop;
                 grid.CellValueChanged += grid_CellValueChanged;
                 grid.CellDoubleClick += Grid_CellDoubleClick;
-
-                // Attach sorting event only once here
                 grid.ColumnHeaderMouseClick += grid_ColumnHeaderMouseClick;
-                grid.DefaultCellStyle.BackColor = Color.White;
-                grid.MultiSelect = true;
+                grid.KeyDown += Grid_KeyDown;
 
-                // Context menu
                 contextMenu = new ContextMenuStrip();
                 contextMenu.Items.Add("New Folder", null, NewFolder_Click);
                 contextMenu.Items.Add("Rename", null, Rename_Click);
                 contextMenu.Items.Add("Delete", null, Delete_Click);
-
-                // Add controls
-                Controls.Add(label);
                 Controls.Add(comboScope);
                 Controls.Add(btnSave);
                 Controls.Add(btnDelete);
                 Controls.Add(grid);
-                Controls.Add(labelNotebook);
-                Controls.Add(labelSection);
-                Controls.Add(labelPage);
-                Controls.Add(labelPara);
+                //Controls.Add(labelNotebook);
+                //Controls.Add(labelSection);
+                //Controls.Add(labelPage);
+                //Controls.Add(labelPara);
 
-                // Handle resize for grid and redraw
-                this.Resize += (s, e) =>
-                {
-                    grid.Width = this.ClientSize.Width - 40;
-                    grid.Height = this.ClientSize.Height - 70;
-                    this.Invalidate();
-                };
-
-                // Disable default sorting on "Name" column (will recreate later after columns are added)
-                grid.Columns.Clear();
-                // We will set SortMode in RefreshGridDisplay after columns add
-
-                // Store parameters
                 selectedId = onenoteId;
                 selectedScope = onenoteScope;
                 selectedText = displayText;
@@ -164,27 +110,13 @@ namespace CSOneNoteRibbonAddIn
                 this.pageName = pageName;
                 this.paraContent = paraContent;
 
-                // Allow minimize (hide) if clicked outside
-                Application.AddMessageFilter(new CustomMessageFilter(this));
-
                 LoadTable();
-
-                UpdateBookmarkInfo(
-                    selectedId,
-                    selectedScope,
-                    selectedText,
-                    notebookName,
-                    notebookColor,
-                    sectionGroupName,
-                    sectionName,
-                    sectionColor,
-                    pageName,
-                    paraContent);
-
+                UpdateBookmarkInfo(selectedId, selectedScope, selectedText, notebookName, notebookColor,
+                    sectionGroupName, sectionName, sectionColor, pageName, paraContent);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error initializing Bookmark window: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error initializing Bookmark window: " + ex.Message);
             }
         }
 
@@ -396,36 +328,31 @@ namespace CSOneNoteRibbonAddIn
         private void LoadTable()
         {
             items.Clear();
-
-            if (!File.Exists(tablePath))
-                return;
-
+            if (!File.Exists(tablePath)) return;
             try
             {
                 var lines = File.ReadAllLines(tablePath);
-
                 foreach (var line in lines)
                 {
-                    var parts = line.Split(new[] { ',' }, 13);
-                    if (parts.Length == 13)
+                    var parts = line.Split(new[] { ',' }, 14);
+                    var item = new BookmarkItem
                     {
-                        items.Add(new BookmarkItem
-                        {
-                            Type = parts[0],
-                            Id = parts[1],
-                            ParentId = parts[2] == "null" ? null : parts[2],
-                            Name = parts[3],
-                            NotebookName = parts[4],
-                            NotebookColor = parts[5],
-                            SectionGroupName = parts[6],
-                            SectionName = parts[7],
-                            SectionColor = parts[8],
-                            PageName = parts[9],
-                            ParaContent = parts[10],
-                            Notes = parts[11],
-                            IsExpanded = parts[12] == "1" // *** Load expanded flag
-                        });
-                    }
+                        Type = parts[0],
+                        Id = parts[1],
+                        ParentId = parts[2] == "null" ? null : parts[2],
+                        Name = parts[3],
+                        NotebookName = parts[4],
+                        NotebookColor = parts[5],
+                        SectionGroupName = parts[6],
+                        SectionName = parts[7],
+                        SectionColor = parts[8],
+                        PageName = parts[9],
+                        ParaContent = parts[10],
+                        Notes = parts[11],
+                        IsExpanded = parts[12] == "1",
+                        SortOrder = (parts.Length >= 14 && int.TryParse(parts[13], out var so)) ? so : 0
+                    };
+                    items.Add(item);
                 }
             }
             catch (Exception ex)
@@ -437,23 +364,22 @@ namespace CSOneNoteRibbonAddIn
         {
             try
             {
-                var lines = items.Select(i =>
-                    string.Join(",", new[]{
-                        EscapeCsv(i.Type),
-                        EscapeCsv(i.Id),
-                        EscapeCsv(i.ParentId ?? "null"),
-                        EscapeCsv(i.Name),
-                        EscapeCsv(i.NotebookName),
-                        EscapeCsv(i.NotebookColor),
-                        EscapeCsv(i.SectionGroupName),
-                        EscapeCsv(i.SectionName),
-                        EscapeCsv(i.SectionColor),
-                        EscapeCsv(i.PageName),
-                        EscapeCsv(i.ParaContent),
-                        EscapeCsv(i.Notes ?? ""),
-                        i.IsExpanded ? "1" : "0" // *** Save expanded flag
-                    })).ToList();
-
+                var lines = items.Select(i => string.Join(",", new[]{
+                    EscapeCsv(i.Type),
+                    EscapeCsv(i.Id),
+                    EscapeCsv(i.ParentId ?? "null"),
+                    EscapeCsv(i.Name),
+                    EscapeCsv(i.NotebookName),
+                    EscapeCsv(i.NotebookColor),
+                    EscapeCsv(i.SectionGroupName),
+                    EscapeCsv(i.SectionName),
+                    EscapeCsv(i.SectionColor),
+                    EscapeCsv(i.PageName),
+                    EscapeCsv(i.ParaContent),
+                    EscapeCsv(i.Notes ?? ""),
+                    i.IsExpanded ? "1" : "0",
+                    i.SortOrder.ToString() // NEW
+                })).ToList();
                 File.WriteAllLines(tablePath, lines);
             }
             catch (Exception ex)
@@ -465,9 +391,7 @@ namespace CSOneNoteRibbonAddIn
         {
             if (string.IsNullOrEmpty(input)) return "";
             if (input.Contains(",") || input.Contains("\"") || input.Contains("\n"))
-            {
                 return "\"" + input.Replace("\"", "\"\"") + "\"";
-            }
             return input;
         }
         private void grid_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -593,47 +517,55 @@ namespace CSOneNoteRibbonAddIn
         }
         private void Grid_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.F2 && grid.SelectedCells.Count == 1)
+            try
             {
-                var cell = grid.SelectedCells[0];
-                if (cell.OwningColumn.Name == "Name")
+                if (e.KeyCode == Keys.F2 && grid.SelectedCells.Count == 1)
                 {
-                    grid.CurrentCell = cell;
-                    grid.BeginEdit(true);
+                    var cell = grid.SelectedCells[0];
+                    if (cell.OwningColumn.Name == "Name")
+                    {
+                        grid.CurrentCell = cell;
+                        grid.BeginEdit(true);
+                        e.Handled = true;
+                    }
+                }
+                else if (e.KeyCode == Keys.Enter && grid.SelectedRows.Count == 1)
+                {
+                    string id = grid.SelectedRows[0].Cells["Id"].Value?.ToString();
+                    if (string.IsNullOrEmpty(id)) return;
+
+                    // Use cachedList if available
+                    var sourceList = cachedList ?? items;
+                    var item = sourceList.FirstOrDefault(i => i.Id == id);
+                    if (item == null) return;
+
+                    if (item.Type == "Folder")
+                    {
+                        item.IsExpanded = !item.IsExpanded;
+                        SaveToFile();
+                        RefreshGridDisplay(cachedList ?? null);
+                    }
+                    else if (item.Type == "Bookmark")
+                    {
+                        try
+                        {
+                            var app = new Microsoft.Office.Interop.OneNote.Application();
+                            app.NavigateTo(id);
+                        }
+                        catch (Exception exNav)
+                        {
+                            MessageBox.Show("Failed to open OneNote page: " + exNav.Message);
+                        }
+                    }
                     e.Handled = true;
                 }
             }
-            else if (e.KeyCode == Keys.Enter && grid.SelectedRows.Count == 1)
+            catch (Exception ex)
             {
-                var selectedRow = grid.SelectedRows[0];
-                string id = selectedRow.Cells["Id"].Value?.ToString();
-                if (string.IsNullOrEmpty(id)) return;
-
-                var item = items.FirstOrDefault(i => i.Id == id);
-                if (item == null) return;
-
-                if (item.Type == "Folder")
-                {
-                    item.IsExpanded = !item.IsExpanded;
-                    SaveToFile();
-                    RefreshGridDisplay(cachedList ?? null);
-                }
-                else if (item.Type == "Bookmark")
-                {
-                    try
-                    {
-                        var app = new Microsoft.Office.Interop.OneNote.Application();
-                        app.NavigateTo(id);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Failed to open OneNote page: " + ex.Message);
-                    }
-                }
-
-                e.Handled = true; // prevent default handling
+                MessageBox.Show("Error in key handling: " + ex.Message);
             }
         }
+
         private void grid_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
             if (grid.Columns[e.ColumnIndex].Name == "Name")
@@ -644,20 +576,20 @@ namespace CSOneNoteRibbonAddIn
         private List<BookmarkItem> FlattenForDisplay(string parentId, int depth)
         {
             var result = new List<BookmarkItem>();
-
-            var folders = items.Where(i => i.ParentId == parentId && i.Type == "Folder").ToList();
+            var folders = items.Where(i => i.ParentId == parentId && i.Type == "Folder")
+                               .OrderBy(i => i.SortOrder).ToList();
             foreach (var folder in folders)
             {
                 result.Add(folder);
                 if (folder.IsExpanded)
                     result.AddRange(FlattenForDisplay(folder.Id, depth + 1));
             }
-
-            var bookmarks = items.Where(i => i.ParentId == parentId && i.Type == "Bookmark").ToList();
+            var bookmarks = items.Where(i => i.ParentId == parentId && i.Type == "Bookmark")
+                                 .OrderBy(i => i.SortOrder).ToList();
             result.AddRange(bookmarks);
-
             return result;
         }
+
         private List<BookmarkItem> FlattenForDisplaySorted(string parentId, int depth, bool ascending)
         {
             var result = new List<BookmarkItem>();
@@ -682,9 +614,23 @@ namespace CSOneNoteRibbonAddIn
         }
         private void ToggleSort()
         {
-            sortAscending = !sortAscending;
-            cachedList = FlattenForDisplaySorted(null, 0, sortAscending);
-            RefreshGridDisplay(cachedList);
+            if (!showingAlphabetical)
+            {
+                // First time -> show alphabetical order
+                sortAscending = true; // or toggle if you want to alternate between asc/desc
+                cachedList = FlattenForDisplaySorted(null, 0, sortAscending);
+
+                RefreshGridDisplay(cachedList);
+                showingAlphabetical = true;
+            }
+            else
+            {
+                // Going back -> show manual order from items.SortOrder
+                cachedList = null; // forces RefreshGridDisplay to use FlattenForDisplay
+                RefreshGridDisplay();
+
+                showingAlphabetical = false;
+            }
         }
         private int GetDepth(BookmarkItem item)
         {
@@ -715,30 +661,39 @@ namespace CSOneNoteRibbonAddIn
             try
             {
                 if (e.RowIndex < 0) return;
-                var clickedColumn = grid.Columns[e.ColumnIndex].Name;
-                string id = grid.Rows[e.RowIndex].Cells["Id"].Value.ToString();
-                var item = items.FirstOrDefault(i => i.Id == id);
+
+                string id = grid.Rows[e.RowIndex].Cells["Id"].Value?.ToString();
+                if (string.IsNullOrEmpty(id)) return;
+
+                // Use cachedList if sorting is active
+                var sourceList = cachedList ?? items;
+                var item = sourceList.FirstOrDefault(i => i.Id == id);
                 if (item == null) return;
+
+                string clickedColumn = grid.Columns[e.ColumnIndex].Name;
 
                 if (clickedColumn == "Name" && item.Type == "Folder")
                 {
-                    item.IsExpanded = !item.IsExpanded; // *** toggle expansion
-                    SaveToFile(); // persist state immediately
+                    item.IsExpanded = !item.IsExpanded;
+                    SaveToFile();
                     RefreshGridDisplay(cachedList ?? null);
                 }
                 else if (clickedColumn == "Name" && item.Type == "Bookmark")
                 {
-                    var app = new Microsoft.Office.Interop.OneNote.Application();
-                    app.NavigateTo(id);
+                    try
+                    {
+                        var app = new Microsoft.Office.Interop.OneNote.Application();
+                        app.NavigateTo(id);
+                    }
+                    catch (Exception exNav)
+                    {
+                        MessageBox.Show("Failed to open OneNote page: " + exNav.Message);
+                    }
                 }
                 else if (clickedColumn == "Notes")
                 {
                     grid.Rows[e.RowIndex].Cells["Notes"].ReadOnly = false;
                     grid.BeginEdit(true);
-                }
-                else
-                {
-                    grid.Rows[e.RowIndex].Cells[e.ColumnIndex].ReadOnly = true;
                 }
             }
             catch (Exception ex)
@@ -746,6 +701,7 @@ namespace CSOneNoteRibbonAddIn
                 MessageBox.Show("Error handling double-click: " + ex.Message);
             }
         }
+
         private void Grid_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right)
@@ -804,65 +760,39 @@ namespace CSOneNoteRibbonAddIn
         }
         private void Grid_DragDrop(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(typeof(string)))
+            if (!e.Data.GetDataPresent(typeof(string))) return;
+            string draggedData = (string)e.Data.GetData(typeof(string));
+            var draggedIds = draggedData.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            if (draggedIds.Length == 0) return;
+
+            Point clientPoint = grid.PointToClient(new Point(e.X, e.Y));
+            var hitTest = grid.HitTest(clientPoint.X, clientPoint.Y);
+            if (hitTest.RowIndex < 0) return;
+            string targetId = grid.Rows[hitTest.RowIndex].Cells["Id"].Value.ToString();
+            var targetItem = items.FirstOrDefault(i => i.Id == targetId);
+            if (targetItem == null) return;
+
+            string parentId = targetItem.Type == "Folder" ? targetItem.Id : targetItem.ParentId;
+            var siblings = items.Where(i => i.ParentId == parentId).OrderBy(i => i.SortOrder).ToList();
+            foreach (var did in draggedIds)
+                siblings.RemoveAll(i => i.Id == did);
+
+            int insertIndex = siblings.FindIndex(i => i.Id == targetId);
+            if (insertIndex < 0) insertIndex = siblings.Count;
+            foreach (var did in draggedIds)
             {
-                string draggedData = (string)e.Data.GetData(typeof(string));
-                if (string.IsNullOrWhiteSpace(draggedData)) return;
-
-                var draggedIds = draggedData.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-                if (draggedIds.Length == 0) return;
-
-                Point clientPoint = grid.PointToClient(new Point(e.X, e.Y));
-                var hitTest = grid.HitTest(clientPoint.X, clientPoint.Y);
-
-                BookmarkItem targetItem = null;
-                if (hitTest.RowIndex >= 0)
+                var item = items.FirstOrDefault(i => i.Id == did);
+                if (item != null)
                 {
-                    string targetId = grid.Rows[hitTest.RowIndex].Cells["Id"].Value?.ToString();
-                    targetItem = items.FirstOrDefault(i => i.Id == targetId);
-                    if (targetItem == null) return;
+                    item.ParentId = parentId;
+                    siblings.Insert(insertIndex++, item);
                 }
-
-                foreach (var draggedId in draggedIds)
-                {
-                    var draggedItem = items.FirstOrDefault(i => i.Id == draggedId);
-                    if (draggedItem == null) continue;
-
-                    // Avoid moving item onto itself or into a child item
-                    if (targetItem != null)
-                    {
-                        if (draggedItem.Id == targetItem.Id)
-                        {
-                            MessageBox.Show($"Cannot move \"{draggedItem.Name}\" into itself.");
-                            continue;
-                        }
-                        // Optionally: prevent circular parenting by checking if target folder is a child of dragged item
-                        if (IsDescendant(targetItem.Id, draggedItem.Id))
-                        {
-                            MessageBox.Show($"Cannot move \"{draggedItem.Name}\" into its descendant \"{targetItem.Name}\".");
-                            continue;
-                        }
-                    }
-
-                    if (targetItem != null && targetItem.Type == "Folder")
-                    {
-                        draggedItem.ParentId = targetItem.Id;
-                    }
-                    else if (targetItem != null)
-                    {
-                        // If target is a bookmark, move dragged item to same parent as target
-                        draggedItem.ParentId = targetItem.ParentId;
-                    }
-                    else
-                    {
-                        draggedItem.ParentId = null;
-                    }
-                }
-
-                SaveToFile();
-                cachedList = null;
-                RefreshGridDisplay();
             }
+            for (int i = 0; i < siblings.Count; i++) siblings[i].SortOrder = i;
+
+            SaveToFile();
+            cachedList = null;
+            RefreshGridDisplay();
         }
         private bool IsDescendant(string potentialDescendantId, string ancestorId)
         {
