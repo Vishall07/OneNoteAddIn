@@ -30,6 +30,9 @@ namespace CSOneNoteRibbonAddIn
         private List<BookmarkItem> cachedList;
         private bool showingAlphabetical = false;
         private bool isTextWrapEnabled = false;
+        private ListBox listScope;
+        private Point mouseOffset;
+        private bool isDragging = false;
         public BookMark_Window(
             string onenoteId,
             string onenoteScope,
@@ -56,37 +59,32 @@ namespace CSOneNoteRibbonAddIn
                 labelPage = new Label { Location = new Point(20, 90), AutoSize = true };
                 labelPara = new Label { Location = new Point(20, 110), AutoSize = true };
 
-                comboScope = new ComboBox() { Location = new Point(20, 12), Width = 150 };
-                comboScope.Items.AddRange(new[] {
-                    "Current Paragraph", "Current Section Group", "Current Section", "Current Page", "Current Notebook"
-                });
-                comboScope.SelectedIndex = 0;
-
-                comboScope.Width = 180;
-                comboScope.Font = new Font("Segoe UI", 10);
-                btnSave = new Button
+                listScope = new ListBox()
                 {
-                    Location = new Point(220, 12),
-                    Text = "💾 Save",
-                    Width = 80,
-                    Height = 25,
-                    FlatStyle = FlatStyle.Flat,
-                    BackColor = Color.Transparent,
-                    TextAlign = ContentAlignment.TopCenter, // Ensures text is centered vertically/horizontally
-                    Padding = new Padding(0) // No extra space inside the button
+                    Location = new Point(20, 12),
+                    Width = 140,
+                    Font = new Font("Segoe UI", 10),
+                    Height = 90 // Adjust as needed
                 };
-                btnSave.FlatAppearance.BorderSize = 0;
-                btnSave.FlatAppearance.MouseOverBackColor = Color.Transparent; 
-                btnSave.FlatAppearance.MouseDownBackColor = Color.Transparent; 
-                btnSave.Click += BtnSave_Click;
-                btnSave.FlatStyle = FlatStyle.Flat;
-                btnSave.FlatAppearance.BorderSize = 0;
-                btnSave.BackColor = Color.Transparent;
-                btnSave.Text = "💾 Save"; // Use only icon, or set Text as well if you want both.
+
+                // Add your scope options
+                listScope.Items.AddRange(new[]
+                {
+                    "Current Paragraph",
+                    "Current Section Group",
+                    "Current Section",
+                    "Current Page",
+                    "Current Notebook"
+                });
+
+                listScope.DoubleClick += ListScope_DoubleClick;
+                listScope.MouseDown += listScope_MouseDown;
+                listScope.MouseMove += listScope_MouseMove;
+                listScope.MouseUp += listScope_MouseUp;
 
                 grid = new DataGridView
                 {
-                    Location = new Point(20, 45),
+                    Location = new Point(20, 120),
                     Width = this.ClientSize.Width - 40,
                     Height = this.ClientSize.Height - 10,
                     AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
@@ -106,16 +104,17 @@ namespace CSOneNoteRibbonAddIn
                 grid.CellDoubleClick += Grid_CellDoubleClick;
                 grid.ColumnHeaderMouseClick += grid_ColumnHeaderMouseClick;
                 grid.KeyDown += Grid_KeyDown;
- 
+                grid.CellClick += Grid_CellClick;
+
                 contextMenu = new ContextMenuStrip();
                 contextMenu.Items.Add("New Folder", null, NewFolder_Click);
                 contextMenu.Items.Add("Rename", null, Rename_Click);
                 contextMenu.Items.Add("Delete", null, Delete_Click);
                 contextMenu.Items.Add("TextWrap On/Off", null, TextWrap_Click);
-                Controls.Add(comboScope);
-                Controls.Add(btnSave);
-                Controls.Add(btnDelete);
+                //Controls.Add(btnDelete);
                 Controls.Add(grid);
+                Controls.Add(listScope);
+
                 //Controls.Add(labelNotebook);
                 //Controls.Add(labelSection);
                 //Controls.Add(labelPage);
@@ -143,6 +142,146 @@ namespace CSOneNoteRibbonAddIn
             catch (Exception ex)
             {
                 MessageBox.Show("Error initializing Bookmark window: " + ex.Message);
+            }
+        }
+        private void listScope_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                mouseOffset = new Point(e.X, e.Y);
+                isDragging = true;
+            }
+        }
+
+        private void listScope_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (isDragging)
+            {
+                Point newLocation = listScope.Location;
+                newLocation.X += e.X - mouseOffset.X;
+                newLocation.Y += e.Y - mouseOffset.Y;
+                listScope.Location = newLocation;
+            }
+        }
+
+        private void listScope_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (isDragging)
+            {
+                isDragging = false;
+            }
+        }
+        private void Grid_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            try
+            {
+                if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+                string id = grid.Rows[e.RowIndex].Cells["Id"].Value?.ToString();
+                if (string.IsNullOrEmpty(id)) return;
+
+                // Use cachedList if sorting is active
+                var sourceList = cachedList ?? items;
+                var item = sourceList.FirstOrDefault(i => i.Id == id);
+                if (item == null) return;
+
+                string clickedColumn = grid.Columns[e.ColumnIndex].Name;
+
+                if (clickedColumn == "Name" && item.Type == "Bookmark")
+                {
+                    try
+                    {
+                        // Open the OneNote object (Notebook, Section, Page)
+                        var app = new Microsoft.Office.Interop.OneNote.Application();
+
+                        // If your "id" can refer to Notebook, Section, or Page, 
+                        // you may use NavigateTo with right id
+
+                        // NavigateTo(string bstrHierarchyID, string bstrObjectID, bool fNewWindow)
+                        // (see OneNote Interop docs for alternatives if you want more granularity)
+                        app.NavigateTo(id);
+                        // Optionally, to open in a new window:
+                        // app.NavigateTo(id, "", true);
+                    }
+                    catch (Exception exNav)
+                    {
+                        MessageBox.Show("Failed to open OneNote object: " + exNav.Message);
+                    }
+                }
+                else if (clickedColumn == "Notes")
+                {
+                    grid.Rows[e.RowIndex].Cells["Notes"].ReadOnly = false;
+                    grid.BeginEdit(true);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error handling click: " + ex.Message);
+            }
+        }
+        private void ListScope_DoubleClick(object sender, EventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(selectedId))
+                {
+                    MessageBox.Show("No bookmark selected to save.");
+                    return;
+                }
+
+                string bookmarkName;
+                string selected = listScope.SelectedItem.ToString();
+
+                switch (selected)
+                {
+                    case "Current Paragraph":
+                        bookmarkName = paraContent ?? "Unnamed Paragraph";
+                        break;
+                    case "Current Page":
+                        bookmarkName = pageName ?? "Unnamed Page";
+                        break;
+                    case "Current Section":
+                        bookmarkName = sectionName ?? "Unnamed Section";
+                        break;
+                    case "Current Section Group":
+                        bookmarkName = sectionGroupName ?? "Unnamed Section Group";
+                        break;
+                    case "Current Notebook":
+                        bookmarkName = notebookName ?? "Unnamed Notebook";
+                        break;
+                    default:
+                        bookmarkName = "Unnamed Bookmark";
+                        break;
+                }
+
+                var newBookmark = new BookmarkItem
+                {
+                    Type = "Bookmark",
+                    Scope = selected,
+                    Name = bookmarkName,
+                    ParentId = null,
+                    Id = selectedId,
+                    NotebookName = notebookName,
+                    NotebookColor = notebookColor,
+                    SectionGroupName = sectionGroupName,
+                    SectionName = sectionName,
+                    SectionColor = sectionColor,
+                    PageName = pageName,
+                    ParaContent = paraContent,
+                    Notes = ""
+                };
+
+                items.RemoveAll(i => i.Type == "Bookmark" && i.Id == newBookmark.Id);
+                items.Add(newBookmark);
+
+                SaveToFile();
+                cachedList = null;  // reset cached list on data change
+                RefreshGridDisplay();
+                this.Hide();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error saving: " + ex.Message);
             }
         }
         private void TextWrap_Click(object sender, EventArgs e)
@@ -266,71 +405,7 @@ namespace CSOneNoteRibbonAddIn
                 btnDelete.Enabled = grid.SelectedRows.Count > 0;
             }
         }
-        public void btn_save_external()
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(selectedId))
-                {
-                    MessageBox.Show("No bookmark selected to save.");
-                    return;
-                }
 
-                string bookmarkName;
-                string selected = selectedId;
-
-                switch (selected)
-                {
-                    case "Current Paragraph":
-                        bookmarkName = paraContent ?? "Unnamed Paragraph";
-                        break;
-                    case "Current Page":
-                        bookmarkName = pageName ?? "Unnamed Page";
-                        break;
-                    case "Current Section":
-                        bookmarkName = sectionName ?? "Unnamed Section";
-                        break;
-                    case "Current Section Group":
-                        bookmarkName = sectionGroupName ?? "Unnamed Section Group";
-                        break;
-                    case "Current Notebook":
-                        bookmarkName = notebookName ?? "Unnamed Notebook";
-                        break;
-                    default:
-                        bookmarkName = "Unnamed Bookmark";
-                        break;
-                }
-
-                var newBookmark = new BookmarkItem
-                {
-                    Type = "Bookmark",
-                    Scope = selected,
-                    Name = bookmarkName,
-                    ParentId = null,
-                    Id = selectedId,
-                    NotebookName = notebookName,
-                    NotebookColor = notebookColor,
-                    SectionGroupName = sectionGroupName,
-                    SectionName = sectionName,
-                    SectionColor = sectionColor,
-                    PageName = pageName,
-                    ParaContent = paraContent,
-                    Notes = ""
-                };
-
-                items.RemoveAll(i => i.Type == "Bookmark" && i.Id == newBookmark.Id);
-                items.Add(newBookmark);
-
-                SaveToFile();
-                cachedList = null;  // reset cached list on data change
-                RefreshGridDisplay();
-                this.Hide();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error saving: " + ex.Message);
-            }
-        }
         private void BtnSave_Click(object sender, EventArgs e)
         {
             try
@@ -932,17 +1007,29 @@ namespace CSOneNoteRibbonAddIn
             Point clientPoint = grid.PointToClient(new Point(e.X, e.Y));
             var hitTest = grid.HitTest(clientPoint.X, clientPoint.Y);
             if (hitTest.RowIndex < 0) return;
+
             string targetId = grid.Rows[hitTest.RowIndex].Cells["Id"].Value.ToString();
             var targetItem = items.FirstOrDefault(i => i.Id == targetId);
             if (targetItem == null) return;
 
+            // Prevent self-drop and prevent drop into own descendant
+            foreach (var did in draggedIds)
+            {
+                if (targetId == did || IsDescendant(targetId, did))
+                    return;
+            }
+
             string parentId = targetItem.Type == "Folder" ? targetItem.Id : targetItem.ParentId;
             var siblings = items.Where(i => i.ParentId == parentId).OrderBy(i => i.SortOrder).ToList();
+
+            // Remove dragged items from old location
             foreach (var did in draggedIds)
                 siblings.RemoveAll(i => i.Id == did);
 
+            // Insert in the new spot
             int insertIndex = siblings.FindIndex(i => i.Id == targetId);
             if (insertIndex < 0) insertIndex = siblings.Count;
+
             foreach (var did in draggedIds)
             {
                 var item = items.FirstOrDefault(i => i.Id == did);
@@ -952,12 +1039,16 @@ namespace CSOneNoteRibbonAddIn
                     siblings.Insert(insertIndex++, item);
                 }
             }
-            for (int i = 0; i < siblings.Count; i++) siblings[i].SortOrder = i;
+
+            // Update sort order
+            for (int i = 0; i < siblings.Count; i++)
+                siblings[i].SortOrder = i;
 
             SaveToFile();
             cachedList = null;
             RefreshGridDisplay();
         }
+
         private bool IsDescendant(string potentialDescendantId, string ancestorId)
         {
             string parentId = items.FirstOrDefault(i => i.Id == potentialDescendantId)?.ParentId;
