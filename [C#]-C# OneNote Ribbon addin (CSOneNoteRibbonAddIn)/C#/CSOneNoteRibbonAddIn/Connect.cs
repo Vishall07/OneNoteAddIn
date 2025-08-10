@@ -54,9 +54,10 @@ namespace CSOneNoteRibbonAddIn
         private object applicationObject;
         private object addInInstance;
         private IRibbonUI ribbon;
-        private Thread _uiThread;
+        private Thread _uiThreadBookmark;
+        private Thread _uiThreadNotes;
         private BookMark_Window _bookmarkWindow;
-
+        private Option_Window _notesWindow;
         /// <summary>
         ///		Implements the constructor for the Add-in object.
         ///		Place your initialization code within this method.
@@ -102,6 +103,18 @@ namespace CSOneNoteRibbonAddIn
             ref System.Array custom)
         {
             //MessageBox.Show("CSOneNoteRibbonAddIn OnDisconnection");
+            try
+            {
+                _bookmarkWindow.Activate();
+                while (System.Windows.Forms.Application.OpenForms.Count > 0)
+                {
+                    System.Windows.Forms.Application.OpenForms[0].Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Forms.MessageBox.Show("closing app");
+            }
             this.applicationObject = null;
             GC.Collect();
             GC.WaitForPendingFinalizers();
@@ -194,9 +207,9 @@ namespace CSOneNoteRibbonAddIn
                     return;
                 }
 
-                // Initialize variables from model
+                // Extract data from your model
                 string selectedId = model.Page?.Id ?? "";
-                string selectedScope = "page"; // or whatever your scope is
+                string selectedScope = "page";
                 string displayText = model.Page?.Name ?? "";
                 string notebookName = model.NotebookName ?? "";
                 string notebookColor = model.NotebookColor ?? "";
@@ -206,11 +219,11 @@ namespace CSOneNoteRibbonAddIn
                 string pageName = model.Page?.Name ?? "";
                 string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "";
 
-                if (_uiThread != null && _uiThread.IsAlive && _bookmarkWindow != null)
+                //----BOOKMARK WINDOW----
+                if (_uiThreadBookmark != null && _uiThreadBookmark.IsAlive && _bookmarkWindow != null)
                 {
                     _bookmarkWindow.Invoke((Action)(() =>
                     {
-
                         _bookmarkWindow.UpdateBookmarkInfo(
                             selectedId, selectedScope, displayText,
                             notebookName, notebookColor,
@@ -221,12 +234,10 @@ namespace CSOneNoteRibbonAddIn
                         _bookmarkWindow.Activate();
                         _bookmarkWindow.BringToFront();
                     }));
-                    return;
                 }
                 else
                 {
-                    // If first time: start UI thread and create form
-                    _uiThread = new Thread(() =>
+                    _uiThreadBookmark = new Thread(() =>
                     {
                         try
                         {
@@ -236,26 +247,53 @@ namespace CSOneNoteRibbonAddIn
                                 notebookName, notebookColor,
                                 sectionGroupName, sectionName, sectionColor,
                                 pageName, paraContent);
-                            PositionFormNearCursor(_bookmarkWindow);
 
+                            PositionFormNearCursor(_bookmarkWindow);
                             System.Windows.Forms.Application.Run(_bookmarkWindow);
-                            _bookmarkWindow.Show();
-                            _bookmarkWindow.Activate();
-                            _bookmarkWindow.BringToFront();
                         }
                         catch (Exception ex)
                         {
-                            System.Windows.Forms.MessageBox.Show("Error launching bookmark window: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            MessageBox.Show("Error launching bookmark window: " + ex.Message);
                         }
                     });
-
-                    _uiThread.SetApartmentState(ApartmentState.STA);
-                    _uiThread.Start();
+                    _uiThreadBookmark.SetApartmentState(ApartmentState.STA);
+                    _uiThreadBookmark.Start();
                 }
+
+                //// ---- SECOND WINDOW (Options Window) ----
+                //if (_uiThreadNotes != null && _uiThreadNotes.IsAlive && _notesWindow != null)
+                //{
+                //    _notesWindow.Invoke((Action)(() =>
+                //    {
+                //        _notesWindow.Show();
+                //        _notesWindow.Activate();
+                //        _notesWindow.BringToFront();
+                //    }));
+                //}
+                //else
+                //{
+                //    _uiThreadNotes = new Thread(() =>
+                //    {
+                //        try
+                //        {
+                //            InitializeWindowsForms();
+                //            _notesWindow = CreateNotesWindow(_bookmarkWindow);
+                //            PositionFormNearCursor(_notesWindow, offsetX: 0);
+
+                //            System.Windows.Forms.Application.Run(_notesWindow);
+                //        }
+                //        catch (Exception ex)
+                //        {
+                //            MessageBox.Show("Error launching notes window: " + ex.Message);
+                //        }
+                //    });
+                //    _uiThreadNotes.SetApartmentState(ApartmentState.STA);
+                //    _uiThreadNotes.Start();
+                //}
             }
             catch (Exception ex)
             {
-                System.Windows.Forms.MessageBox.Show("Unexpected error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Unexpected error: " + ex.Message);
             }
         }
 
@@ -344,6 +382,19 @@ namespace CSOneNoteRibbonAddIn
 
             return model;
         }
+
+        //private Option_Window CreateNotesWindow(BookMark_Window _bookmarkWindow)
+        //{
+        //    var form = new Option_Window(_bookmarkWindow);
+        //    return form;
+        //}
+
+        //private void PositionFormNearCursor(Form form, int offsetX = 0, int offsetY = 0)
+        //{
+        //    var mousePos = Cursor.Position;
+        //    form.StartPosition = FormStartPosition.Manual;
+        //    form.Location = new Point(mousePos.X + offsetX, mousePos.Y + offsetY);
+        //}
 
 
         private void LoadParagraphs(OneNote.Application oneNoteApp, PageModel page)

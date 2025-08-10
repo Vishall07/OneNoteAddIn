@@ -16,7 +16,7 @@ namespace CSOneNoteRibbonAddIn
         private Button btnSave;
         private Button btnDelete;
         private DataGridView grid;
-        private string selectedId;
+        public string selectedId;
         private string selectedScope;
         private string selectedText;
         private string tablePath;
@@ -29,7 +29,7 @@ namespace CSOneNoteRibbonAddIn
         private bool sortAscending = true;
         private List<BookmarkItem> cachedList;
         private bool showingAlphabetical = false;
-
+        private bool isTextWrapEnabled = false;
         public BookMark_Window(
             string onenoteId,
             string onenoteScope,
@@ -79,7 +79,6 @@ namespace CSOneNoteRibbonAddIn
                 btnSave.FlatAppearance.MouseOverBackColor = Color.Transparent; 
                 btnSave.FlatAppearance.MouseDownBackColor = Color.Transparent; 
                 btnSave.Click += BtnSave_Click;
-                btnSave.Click += BtnSave_Click;
                 btnSave.FlatStyle = FlatStyle.Flat;
                 btnSave.FlatAppearance.BorderSize = 0;
                 btnSave.BackColor = Color.Transparent;
@@ -112,6 +111,7 @@ namespace CSOneNoteRibbonAddIn
                 contextMenu.Items.Add("New Folder", null, NewFolder_Click);
                 contextMenu.Items.Add("Rename", null, Rename_Click);
                 contextMenu.Items.Add("Delete", null, Delete_Click);
+                contextMenu.Items.Add("TextWrap On/Off", null, TextWrap_Click);
                 Controls.Add(comboScope);
                 Controls.Add(btnSave);
                 Controls.Add(btnDelete);
@@ -145,7 +145,16 @@ namespace CSOneNoteRibbonAddIn
                 MessageBox.Show("Error initializing Bookmark window: " + ex.Message);
             }
         }
+        private void TextWrap_Click(object sender, EventArgs e)
+        {
+            isTextWrapEnabled = !isTextWrapEnabled;
 
+            foreach (DataGridViewColumn column in grid.Columns)
+            {
+                column.DefaultCellStyle.WrapMode = isTextWrapEnabled ? DataGridViewTriState.True : DataGridViewTriState.False;
+            }
+            grid.AutoResizeRows(DataGridViewAutoSizeRowsMode.AllCells);
+        }
         private void ApplyRoundedCorners(int radius)
         {
             var path = new GraphicsPath();
@@ -174,6 +183,7 @@ namespace CSOneNoteRibbonAddIn
         private class BookmarkItem
         {
             public string Type { get; set; } // "Folder" or "Bookmark"
+            public string Scope { get; set; }
             public string Name { get; set; }
             public string ParentId { get; set; } // null means root
             public string Id { get; set; }
@@ -256,8 +266,7 @@ namespace CSOneNoteRibbonAddIn
                 btnDelete.Enabled = grid.SelectedRows.Count > 0;
             }
         }
-
-        private void BtnSave_Click(object sender, EventArgs e)
+        public void btn_save_external()
         {
             try
             {
@@ -268,7 +277,7 @@ namespace CSOneNoteRibbonAddIn
                 }
 
                 string bookmarkName;
-                string selected = comboScope.SelectedItem as string;
+                string selected = selectedId;
 
                 switch (selected)
                 {
@@ -295,6 +304,72 @@ namespace CSOneNoteRibbonAddIn
                 var newBookmark = new BookmarkItem
                 {
                     Type = "Bookmark",
+                    Scope = selected,
+                    Name = bookmarkName,
+                    ParentId = null,
+                    Id = selectedId,
+                    NotebookName = notebookName,
+                    NotebookColor = notebookColor,
+                    SectionGroupName = sectionGroupName,
+                    SectionName = sectionName,
+                    SectionColor = sectionColor,
+                    PageName = pageName,
+                    ParaContent = paraContent,
+                    Notes = ""
+                };
+
+                items.RemoveAll(i => i.Type == "Bookmark" && i.Id == newBookmark.Id);
+                items.Add(newBookmark);
+
+                SaveToFile();
+                cachedList = null;  // reset cached list on data change
+                RefreshGridDisplay();
+                this.Hide();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error saving: " + ex.Message);
+            }
+        }
+        private void BtnSave_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(selectedId))
+                {
+                    MessageBox.Show("No bookmark selected to save.");
+                    return;
+                }
+
+                string bookmarkName;
+                string selected = selectedId;
+
+                switch (selected)
+                {
+                    case "Current Paragraph":
+                        bookmarkName = paraContent ?? "Unnamed Paragraph";
+                        break;
+                    case "Current Page":
+                        bookmarkName = pageName ?? "Unnamed Page";
+                        break;
+                    case "Current Section":
+                        bookmarkName = sectionName ?? "Unnamed Section";
+                        break;
+                    case "Current Section Group":
+                        bookmarkName = sectionGroupName ?? "Unnamed Section Group";
+                        break;
+                    case "Current Notebook":
+                        bookmarkName = notebookName ?? "Unnamed Notebook";
+                        break;
+                    default:
+                        bookmarkName = "Unnamed Bookmark";
+                        break;
+                }
+
+                var newBookmark = new BookmarkItem
+                {
+                    Type = "Bookmark",
+                    Scope = selected,
                     Name = bookmarkName,
                     ParentId = null,
                     Id = selectedId,
@@ -384,24 +459,26 @@ namespace CSOneNoteRibbonAddIn
                 var lines = File.ReadAllLines(tablePath);
                 foreach (var line in lines)
                 {
-                    var parts = line.Split(new[] { ',' }, 14);
+                    var parts = line.Split(new[] { ',' }, 15); // Was 14, now 15 – add one for Scope
                     var item = new BookmarkItem
                     {
                         Type = parts[0],
-                        Id = parts[1],
-                        ParentId = parts[2] == "null" ? null : parts[2],
-                        Name = parts[3],
-                        NotebookName = parts[4],
-                        NotebookColor = parts[5],
-                        SectionGroupName = parts[6],
-                        SectionName = parts[7],
-                        SectionColor = parts[8],
-                        PageName = parts[9],
-                        ParaContent = parts[10],
-                        Notes = parts[11],
-                        IsExpanded = parts[12] == "1",
-                        SortOrder = (parts.Length >= 14 && int.TryParse(parts[13], out var so)) ? so : 0
+                        Scope = parts[1], // NEW: Scope field
+                        Id = parts[2],
+                        ParentId = parts[3] == "null" ? null : parts[3],
+                        Name = parts[4],
+                        NotebookName = parts[5],
+                        NotebookColor = parts[6],
+                        SectionGroupName = parts[7],
+                        SectionName = parts[8],
+                        SectionColor = parts[9],
+                        PageName = parts[10],
+                        ParaContent = parts[11],
+                        Notes = parts[12],
+                        IsExpanded = parts[13] == "1",
+                        SortOrder = (parts.Length >= 15 && int.TryParse(parts[14], out var so)) ? so : 0
                     };
+
                     items.Add(item);
                 }
             }
@@ -416,6 +493,7 @@ namespace CSOneNoteRibbonAddIn
             {
                 var lines = items.Select(i => string.Join(",", new[]{
                     EscapeCsv(i.Type),
+                    EscapeCsv(i.Scope ?? ""),
                     EscapeCsv(i.Id),
                     EscapeCsv(i.ParentId ?? "null"),
                     EscapeCsv(i.Name),
@@ -489,7 +567,9 @@ namespace CSOneNoteRibbonAddIn
                 grid.Rows.Clear();
 
                 // same column setup as before...
+                
                 grid.Columns.Add("Type", "Type");
+                grid.Columns.Add("Scope", "Scope");
                 grid.Columns.Add("Name", "Name");
                 grid.Columns.Add("Id", "Id");
                 grid.Columns.Add("NotebookName", "Notebook Name");
@@ -504,6 +584,7 @@ namespace CSOneNoteRibbonAddIn
                 grid.Columns.Add("Depth", "Depth");
 
                 grid.Columns["Type"].Visible = false;
+                grid.Columns["Scope"].Visible = false;
                 grid.Columns["Id"].Visible = false;
                 grid.Columns["NotebookName"].Visible = false;
                 grid.Columns["NotebookColor"].Visible = false;
@@ -538,10 +619,11 @@ namespace CSOneNoteRibbonAddIn
                         bookmarkPath += " - " + item.SectionGroupName;
                     bookmarkPath += " - " + item.SectionName + " - " + item.PageName;
 
-                    string displayName = IndentName(item.Name, depth, item.Type == "Folder", item.IsExpanded);
+                    string displayName = IndentName(item.Name, depth, item.Type == "Folder", item.IsExpanded, item.Scope);
 
                     int rowIndex = grid.Rows.Add(
                         item.Type,
+                        item.Scope,
                         displayName,
                         item.Id,
                         item.NotebookName,
@@ -709,10 +791,35 @@ namespace CSOneNoteRibbonAddIn
             }
             return depth;
         }
-        private string IndentName(string name, int depth, bool isFolder = false, bool expanded = true)
+        private string IndentName(string name, int depth, bool isFolder = false, bool expanded = true, string scope = "")
         {
-            return new string(' ', depth * 4) + (isFolder ? (expanded ? "📂 " : "📁 ") : "") + name;
+            string indent = new string(' ', depth * 6);
+
+            if (isFolder)
+            {
+                // Folder open or closed icon
+                return indent + (expanded ? "📂 " : "📁 ") + name;
+            }
+            else
+            {
+                string icon;
+
+                switch (scope)
+                {
+                    case "Current Notebook": icon = "📓 "; break;  // Notebook
+                    case "Current Section Group": icon = "📙 "; break;  // Section Group
+                    case "Current Section": icon = "📑 "; break;  // Section
+                    case "Current Page": icon = "📝 "; break;  // Page
+                    case "Current Paragraph": icon = "¶ "; break;  // Paragraph
+                    case "File": icon = "📄 "; break;  // File
+                    case "NotebookObject": icon = "📔 "; break;  // Notebook object
+                    default: icon = "🔖 "; break;  // Generic bookmark
+                }
+
+                return indent + icon + name;
+            }
         }
+
         private void Grid_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             try
