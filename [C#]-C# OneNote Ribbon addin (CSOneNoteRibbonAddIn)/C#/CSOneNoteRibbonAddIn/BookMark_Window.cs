@@ -70,14 +70,15 @@ namespace CSOneNoteRibbonAddIn
                 // Add your scope options
                 listScope.Items.AddRange(new[]
                 {
-                    "Current Paragraph",
+                    "Current Notebook",
                     "Current Section Group",
                     "Current Section",
                     "Current Page",
-                    "Current Notebook"
+                    "Current Paragraph"
+
                 });
 
-                listScope.DoubleClick += ListScope_DoubleClick;
+                listScope.Click += ListScope_Click; 
                 listScope.MouseDown += listScope_MouseDown;
                 listScope.MouseMove += listScope_MouseMove;
                 listScope.MouseUp += listScope_MouseUp;
@@ -199,7 +200,7 @@ namespace CSOneNoteRibbonAddIn
 
                         // NavigateTo(string bstrHierarchyID, string bstrObjectID, bool fNewWindow)
                         // (see OneNote Interop docs for alternatives if you want more granularity)
-                        app.NavigateTo(id);
+                        app.NavigateTo(item.OriginalId);
                         // Optionally, to open in a new window:
                         // app.NavigateTo(id, "", true);
                     }
@@ -219,7 +220,8 @@ namespace CSOneNoteRibbonAddIn
                 MessageBox.Show("Error handling click: " + ex.Message);
             }
         }
-        private void ListScope_DoubleClick(object sender, EventArgs e)
+
+        private void ListScope_Click(object sender, EventArgs e)
         {
             try
             {
@@ -260,7 +262,8 @@ namespace CSOneNoteRibbonAddIn
                     Scope = selected,
                     Name = bookmarkName,
                     ParentId = null,
-                    Id = selectedId,
+                    Id = selectedId + "_" + Guid.NewGuid().ToString(), // unique composite ID
+                    OriginalId = selectedId, // store the actual OneNote ID separately
                     NotebookName = notebookName,
                     NotebookColor = notebookColor,
                     SectionGroupName = sectionGroupName,
@@ -271,11 +274,11 @@ namespace CSOneNoteRibbonAddIn
                     Notes = ""
                 };
 
-                items.RemoveAll(i => i.Type == "Bookmark" && i.Id == newBookmark.Id);
+                // No RemoveAll here → allow duplicates
                 items.Add(newBookmark);
 
                 SaveToFile();
-                cachedList = null;  // reset cached list on data change
+                cachedList = null;
                 RefreshGridDisplay();
                 this.Hide();
             }
@@ -284,6 +287,7 @@ namespace CSOneNoteRibbonAddIn
                 MessageBox.Show("Error saving: " + ex.Message);
             }
         }
+
         private void TextWrap_Click(object sender, EventArgs e)
         {
             isTextWrapEnabled = !isTextWrapEnabled;
@@ -317,7 +321,6 @@ namespace CSOneNoteRibbonAddIn
             base.OnResize(e);
             ApplyRoundedCorners(8);
         }
-
         // BookmarkItem class
         private class BookmarkItem
         {
@@ -325,7 +328,8 @@ namespace CSOneNoteRibbonAddIn
             public string Scope { get; set; }
             public string Name { get; set; }
             public string ParentId { get; set; } // null means root
-            public string Id { get; set; }
+            public string Id { get; set; }       // unique row ID: pageId_GUID
+            public string OriginalId { get; set; } // actual OneNote object ID for navigation
             public string NotebookName { get; set; }
             public string NotebookColor { get; set; }
             public string SectionGroupName { get; set; }
@@ -337,7 +341,6 @@ namespace CSOneNoteRibbonAddIn
             public bool IsExpanded { get; set; } = true;
             public int SortOrder { get; set; }
         }
-
         public void UpdateBookmarkInfo(
             string newSelectedId,
             string newSelectedScope,
@@ -417,7 +420,7 @@ namespace CSOneNoteRibbonAddIn
                 }
 
                 string bookmarkName;
-                string selected = selectedId;
+                string selected = selectedScope; // Use selectedScope not selectedId
 
                 switch (selected)
                 {
@@ -447,7 +450,8 @@ namespace CSOneNoteRibbonAddIn
                     Scope = selected,
                     Name = bookmarkName,
                     ParentId = null,
-                    Id = selectedId,
+                    Id = selectedId + "_" + Guid.NewGuid().ToString(),    // Composite unique ID
+                    OriginalId = selectedId, // The actual OneNote ID
                     NotebookName = notebookName,
                     NotebookColor = notebookColor,
                     SectionGroupName = sectionGroupName,
@@ -455,10 +459,11 @@ namespace CSOneNoteRibbonAddIn
                     SectionColor = sectionColor,
                     PageName = pageName,
                     ParaContent = paraContent,
-                    Notes = ""
+                    Notes = "",
+                    SortOrder = items.Count // append at end
                 };
 
-                items.RemoveAll(i => i.Type == "Bookmark" && i.Id == newBookmark.Id);
+                // Do NOT remove duplicates!
                 items.Add(newBookmark);
 
                 SaveToFile();
@@ -471,6 +476,7 @@ namespace CSOneNoteRibbonAddIn
                 MessageBox.Show("Error saving: " + ex.Message);
             }
         }
+
         private void BtnDelete_Click(object sender, EventArgs e)
         {
             if (grid.SelectedRows.Count == 0)
@@ -534,24 +540,25 @@ namespace CSOneNoteRibbonAddIn
                 var lines = File.ReadAllLines(tablePath);
                 foreach (var line in lines)
                 {
-                    var parts = line.Split(new[] { ',' }, 15); // Was 14, now 15 – add one for Scope
+                    var parts = line.Split(new[] { ',' }, 16); // Now 16 fields
                     var item = new BookmarkItem
                     {
                         Type = parts[0],
-                        Scope = parts[1], // NEW: Scope field
+                        Scope = parts[1],
                         Id = parts[2],
-                        ParentId = parts[3] == "null" ? null : parts[3],
-                        Name = parts[4],
-                        NotebookName = parts[5],
-                        NotebookColor = parts[6],
-                        SectionGroupName = parts[7],
-                        SectionName = parts[8],
-                        SectionColor = parts[9],
-                        PageName = parts[10],
-                        ParaContent = parts[11],
-                        Notes = parts[12],
-                        IsExpanded = parts[13] == "1",
-                        SortOrder = (parts.Length >= 15 && int.TryParse(parts[14], out var so)) ? so : 0
+                        OriginalId = parts[3], // NEW!
+                        ParentId = parts[4] == "null" ? null : parts[4],
+                        Name = parts[5],
+                        NotebookName = parts[6],
+                        NotebookColor = parts[7],
+                        SectionGroupName = parts[8],
+                        SectionName = parts[9],
+                        SectionColor = parts[10],
+                        PageName = parts[11],
+                        ParaContent = parts[12],
+                        Notes = parts[13],
+                        IsExpanded = parts[14] == "1",
+                        SortOrder = (parts.Length >= 16 && int.TryParse(parts[15], out var so)) ? so : 0
                     };
 
                     items.Add(item);
@@ -570,6 +577,7 @@ namespace CSOneNoteRibbonAddIn
                     EscapeCsv(i.Type),
                     EscapeCsv(i.Scope ?? ""),
                     EscapeCsv(i.Id),
+                    EscapeCsv(i.OriginalId ?? ""),                 // <--- NEW
                     EscapeCsv(i.ParentId ?? "null"),
                     EscapeCsv(i.Name),
                     EscapeCsv(i.NotebookName),
@@ -581,7 +589,7 @@ namespace CSOneNoteRibbonAddIn
                     EscapeCsv(i.ParaContent),
                     EscapeCsv(i.Notes ?? ""),
                     i.IsExpanded ? "1" : "0",
-                    i.SortOrder.ToString() // NEW
+                    i.SortOrder.ToString()
                 })).ToList();
                 File.WriteAllLines(tablePath, lines);
             }
@@ -620,9 +628,15 @@ namespace CSOneNoteRibbonAddIn
                 else if (colName == "Name")
                 {
                     var newName = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString();
-                    if (!string.IsNullOrEmpty(newName) && newName != item.Name)
+                    // Step 1: Remove icons and indent spaces
+                    string cleanName = RemoveIconsFromName(newName);
+
+                    // Step 2: Keep only alphanumeric + underscore
+                    cleanName = KeepAlphaNumericUnderscore(cleanName);
+                    
+                    if (!string.IsNullOrEmpty(cleanName) && cleanName != item.Name)
                     {
-                        item.Name = newName;
+                        item.Name = cleanName;
                         SaveToFile();
                         cachedList = null;
                     }
@@ -634,6 +648,40 @@ namespace CSOneNoteRibbonAddIn
                 System.Diagnostics.Debug.WriteLine($"Error updating cell value: {ex.Message}");
             }
         }
+
+        private string RemoveIconsFromName(string nameWithIcons)
+        {
+            if (string.IsNullOrEmpty(nameWithIcons))
+                return nameWithIcons;
+
+            // Remove leading indentation spaces
+            string cleaned = nameWithIcons.TrimStart();
+
+            // Remove known icons
+            string[] icons = { "📂", "📁", "📓", "📙", "📑", "📝", "¶", "📄", "📔", "🔖" };
+            foreach (string icon in icons)
+            {
+                if (cleaned.StartsWith(icon + " "))
+                {
+                    cleaned = cleaned.Substring(icon.Length + 1);
+                    break;
+                }
+                else if (cleaned.StartsWith(icon))
+                {
+                    cleaned = cleaned.Substring(icon.Length);
+                    break;
+                }
+            }
+
+            return cleaned.Trim();
+        }
+
+        private string KeepAlphaNumericUnderscore(string input)
+        {
+            // Only allow A-Z, a-z, 0-9, and _
+            return new string(input.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
+        }
+
         private void RefreshGridDisplay(List<BookmarkItem> flatList = null)
         {
             try
@@ -647,6 +695,7 @@ namespace CSOneNoteRibbonAddIn
                 grid.Columns.Add("Scope", "Scope");
                 grid.Columns.Add("Name", "Name");
                 grid.Columns.Add("Id", "Id");
+                grid.Columns.Add("OriginalId", "OriginalId");
                 grid.Columns.Add("NotebookName", "Notebook Name");
                 grid.Columns.Add("NotebookColor", "Notebook Color");
                 grid.Columns.Add("SectionGroupName", "Section Group");
@@ -670,7 +719,7 @@ namespace CSOneNoteRibbonAddIn
                 grid.Columns["PageName"].Visible = false;
                 grid.Columns["Depth"].Visible = false;
                 grid.Columns["Notes"].ReadOnly = false;
-
+                grid.Columns["OriginalId"].Visible = false;
                 grid.Columns["Name"].ReadOnly = false;
                 grid.KeyDown += Grid_KeyDown;
 
@@ -680,6 +729,10 @@ namespace CSOneNoteRibbonAddIn
                 grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
                 grid.DefaultCellStyle.SelectionBackColor = ColorTranslator.FromHtml("#ddd9ec");
                 grid.DefaultCellStyle.SelectionForeColor = Color.Black;
+
+                grid.Columns["BookMarkPath"].SortMode = DataGridViewColumnSortMode.NotSortable;
+                grid.Columns["Notes"].SortMode = DataGridViewColumnSortMode.NotSortable;
+
                 if (grid.Columns.Contains("Name"))
                     grid.Columns["Name"].SortMode = DataGridViewColumnSortMode.NotSortable;
 
@@ -700,7 +753,8 @@ namespace CSOneNoteRibbonAddIn
                         item.Type,
                         item.Scope,
                         displayName,
-                        item.Id,
+                        item.Id,           // composite for row uniqueness
+                        item.OriginalId,
                         item.NotebookName,
                         item.NotebookColor,
                         item.SectionGroupName,
@@ -739,6 +793,11 @@ namespace CSOneNoteRibbonAddIn
                     var cell = grid.SelectedCells[0];
                     if (cell.OwningColumn.Name == "Name")
                     {
+
+                        var rowIndex = grid.SelectedRows[0].Index;
+                        var nameColIndex = grid.Columns["Name"]?.Index ?? -1;
+                        if (nameColIndex < 0) return;
+                        grid.Rows[rowIndex].Cells[nameColIndex].Value = "";
                         grid.CurrentCell = cell;
                         grid.BeginEdit(true);
                         e.Handled = true;
@@ -765,7 +824,7 @@ namespace CSOneNoteRibbonAddIn
                         try
                         {
                             var app = new Microsoft.Office.Interop.OneNote.Application();
-                            app.NavigateTo(id);
+                            app.NavigateTo(item.OriginalId);
                         }
                         catch (Exception exNav)
                         {
@@ -922,7 +981,7 @@ namespace CSOneNoteRibbonAddIn
                     try
                     {
                         var app = new Microsoft.Office.Interop.OneNote.Application();
-                        app.NavigateTo(id);
+                        app.NavigateTo(item.OriginalId);
                     }
                     catch (Exception exNav)
                     {

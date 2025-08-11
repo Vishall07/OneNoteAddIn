@@ -527,47 +527,54 @@ namespace CSOneNoteRibbonAddIn
         {
             string tablePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "window_info.txt");
 
-            if (File.Exists(tablePath))
-            {
-                // Read saved position and size
-                string[] lines = File.ReadAllLines(tablePath);
-                if (lines.Length == 4 &&
-                    int.TryParse(lines[0], out int left) &&
-                    int.TryParse(lines[1], out int top) &&
-                    int.TryParse(lines[2], out int width) &&
-                    int.TryParse(lines[3], out int height))
-                {
-                    form.Left = left;
-                    form.Top = top;
-                    form.Width = width;
-                    form.Height = height;
-                    // Hook event handlers to save position and size when form changes
-                    form.ResizeEnd += (sender, e) => SaveFormPositionAndSize(form, tablePath);
-                    form.Move += (sender, e) => SaveFormPositionAndSize(form, tablePath);
-                    return;
-                }
-            }
+            //if (File.Exists(tablePath))
+            //{
+            //    // Read saved position and size
+            //    string[] lines = File.ReadAllLines(tablePath);
+            //    if (lines.Length == 4 &&
+            //        int.TryParse(lines[0], out int left) &&
+            //        int.TryParse(lines[1], out int top) &&
+            //        int.TryParse(lines[2], out int width) &&
+            //        int.TryParse(lines[3], out int height))
+            //    {
+            //        form.Left = left;
+            //        form.Top = top;
+            //        form.Width = width;
+            //        form.Height = height;
+            //        // Hook event handlers to save position and size when form changes
+            //        form.ResizeEnd += (sender, e) => SaveFormPositionAndSize(form, tablePath);
+            //        form.Move += (sender, e) => SaveFormPositionAndSize(form, tablePath);
+            //        return;
+            //    }
+            //}
 
             // If no saved data, use default positioning logic
             var cursorPos = Cursor.Position;
-
-            int x = cursorPos.X - (form.Width / 2);
-            int y = cursorPos.Y + 40;
-
             var screen = Screen.FromPoint(cursorPos);
 
-            if (x < screen.WorkingArea.Left)
-                x = screen.WorkingArea.Left;
-            if ((x + form.Width) > screen.WorkingArea.Right)
-                x = screen.WorkingArea.Right - form.Width;
-            if ((y + form.Height) > screen.WorkingArea.Bottom)
+            // Check if placing the form to the right would go off screen
+            bool goesOffRight = cursorPos.X + form.Width > screen.WorkingArea.Right;
+
+            // X coordinate — right align if overflow, else left align
+            int x = goesOffRight
+                ? cursorPos.X - form.Width // right-top corner at cursor
+                : cursorPos.X;             // left-top corner at cursor
+
+            // Y coordinate — always keep the top at cursor
+            int y = cursorPos.Y;
+
+            // Ensure it doesn’t go above or below screen
+            if (y < screen.WorkingArea.Top)
+                y = screen.WorkingArea.Top;
+            if (y + form.Height > screen.WorkingArea.Bottom)
                 y = screen.WorkingArea.Bottom - form.Height;
 
+            // Apply position
             form.Left = x;
             form.Top = y;
             // Hook event handlers to save position and size when form changes
-            form.ResizeEnd += (sender, e) => SaveFormPositionAndSize(form, tablePath);
-            form.Move += (sender, e) => SaveFormPositionAndSize(form, tablePath);
+            //form.ResizeEnd += (sender, e) => SaveFormPositionAndSize(form, tablePath);
+            //form.Move += (sender, e) => SaveFormPositionAndSize(form, tablePath);
             form.Show();
         }
 
