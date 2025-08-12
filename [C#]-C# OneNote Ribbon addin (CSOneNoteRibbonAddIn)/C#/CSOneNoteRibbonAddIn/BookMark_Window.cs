@@ -854,17 +854,24 @@ namespace CSOneNoteRibbonAddIn
         private List<BookmarkItem> FlattenForDisplay(string parentId, int depth)
         {
             var result = new List<BookmarkItem>();
-            var folders = items.Where(i => i.ParentId == parentId && i.Type == "Folder")
-                               .OrderBy(i => i.SortOrder).ToList();
-            foreach (var folder in folders)
+
+            // Get all children (both folders and bookmarks) in SortOrder
+            var children = items
+                .Where(i => i.ParentId == parentId)
+                .OrderBy(i => i.SortOrder)
+                .ToList();
+
+            foreach (var child in children)
             {
-                result.Add(folder);
-                if (folder.IsExpanded)
-                    result.AddRange(FlattenForDisplay(folder.Id, depth + 1));
+                result.Add(child);
+
+                // If the child is an expanded folder, recurse into it
+                if (child.Type == "Folder" && child.IsExpanded)
+                {
+                    result.AddRange(FlattenForDisplay(child.Id, depth + 1));
+                }
             }
-            var bookmarks = items.Where(i => i.ParentId == parentId && i.Type == "Bookmark")
-                                 .OrderBy(i => i.SortOrder).ToList();
-            result.AddRange(bookmarks);
+
             return result;
         }
 
@@ -954,6 +961,8 @@ namespace CSOneNoteRibbonAddIn
             }
         }
 
+        #region for svg file
+        #endregion
         private void Grid_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             try
@@ -1071,24 +1080,69 @@ namespace CSOneNoteRibbonAddIn
             var targetItem = items.FirstOrDefault(i => i.Id == targetId);
             if (targetItem == null) return;
 
-            // Prevent self-drop and prevent drop into own descendant
+            // Prevent self-drop and drop into own descendants
             foreach (var did in draggedIds)
             {
                 if (targetId == did || IsDescendant(targetId, did))
                     return;
             }
 
-            string parentId = targetItem.Type == "Folder" ? targetItem.Id : targetItem.ParentId;
-            var siblings = items.Where(i => i.ParentId == parentId).OrderBy(i => i.SortOrder).ToList();
+            Rectangle rowRect = grid.GetRowDisplayRectangle(hitTest.RowIndex, false);
+            int rowHeight = rowRect.Height;
+            int relativeY = clientPoint.Y - rowRect.Top;
+            double dropPositionRatio = (double)relativeY / rowHeight;
 
-            // Remove dragged items from old location
+            string parentId;
+            int insertIndex;
+            List<BookmarkItem> siblings;
+
+            // ---- TOP ZONE ----
+            if (dropPositionRatio <= 0.15)
+            {
+                parentId = targetItem.ParentId;
+                siblings = items.Where(i => i.ParentId == parentId)
+                                .OrderBy(i => i.SortOrder)
+                                .ToList();
+                insertIndex = siblings.FindIndex(i => i.Id == targetId);
+                if (insertIndex < 0) insertIndex = siblings.Count;
+            }
+            // ---- BOTTOM ZONE ----
+            else if (dropPositionRatio >= 0.65)
+            {
+                parentId = targetItem.ParentId;
+                siblings = items.Where(i => i.ParentId == parentId)
+                                .OrderBy(i => i.SortOrder)
+                                .ToList();
+                insertIndex = siblings.FindIndex(i => i.Id == targetId);
+                if (insertIndex < 0) insertIndex = siblings.Count;
+                insertIndex++; // after target
+            }
+            // ---- MIDDLE ZONE ON FOLDER ----
+            else if (targetItem.Type == "Folder")
+            {
+                parentId = targetItem.Id;
+                siblings = items.Where(i => i.ParentId == parentId)
+                                .OrderBy(i => i.SortOrder)
+                                .ToList();
+                insertIndex = 0; // top of folder's children
+            }
+            // ---- MIDDLE ZONE ON BOOKMARK ----
+            else
+            {
+                parentId = targetItem.ParentId;
+                siblings = items.Where(i => i.ParentId == parentId)
+                                .OrderBy(i => i.SortOrder)
+                                .ToList();
+                insertIndex = siblings.FindIndex(i => i.Id == targetId);
+                if (insertIndex < 0) insertIndex = siblings.Count;
+                insertIndex++; // after bookmark
+            }
+
+            // Remove dragged items from old location (avoid duplications)
             foreach (var did in draggedIds)
                 siblings.RemoveAll(i => i.Id == did);
 
-            // Insert in the new spot
-            int insertIndex = siblings.FindIndex(i => i.Id == targetId);
-            if (insertIndex < 0) insertIndex = siblings.Count;
-
+            // Insert at the calculated position
             foreach (var did in draggedIds)
             {
                 var item = items.FirstOrDefault(i => i.Id == did);
@@ -1099,14 +1153,17 @@ namespace CSOneNoteRibbonAddIn
                 }
             }
 
-            // Update sort order
+            // Update sort orders
             for (int i = 0; i < siblings.Count; i++)
+            {
                 siblings[i].SortOrder = i;
+            }
 
             SaveToFile();
             cachedList = null;
             RefreshGridDisplay();
         }
+
 
         private bool IsDescendant(string potentialDescendantId, string ancestorId)
         {

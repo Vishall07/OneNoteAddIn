@@ -429,6 +429,8 @@ namespace CSOneNoteRibbonAddIn
                             });
                             index++;
                         }
+                        break;
+
                     }
                 }
             }
