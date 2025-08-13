@@ -4,8 +4,10 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 using System.Xml.Linq;
+using Excel = Microsoft.Office.Interop.Excel; // Add at the top of your file
 
 namespace CSOneNoteRibbonAddIn
 {
@@ -49,9 +51,9 @@ namespace CSOneNoteRibbonAddIn
             {
                 // Basic window setup
                 this.FormBorderStyle = FormBorderStyle.None;
-                this.Width = 600;
-                this.Height = 300;
-                this.TopMost = true;
+                //this.Width = 600;
+                //this.Height = 300;
+                
                 this.BackColor = Color.White;
 
                 labelNotebook = new Label { Location = new Point(20, 30), AutoSize = true };
@@ -112,6 +114,9 @@ namespace CSOneNoteRibbonAddIn
                 contextMenu.Items.Add("Rename", null, Rename_Click);
                 contextMenu.Items.Add("Delete", null, Delete_Click);
                 contextMenu.Items.Add("TextWrap On/Off", null, TextWrap_Click);
+                contextMenu.Items.Add("Open All Notes", null, Open_All_Notes); 
+                contextMenu.Items.Add("Export All Bookmarks", null, Export_All_Bookmarks_Click);
+
                 //Controls.Add(btnDelete);
                 Controls.Add(grid);
                 Controls.Add(listScope);
@@ -145,6 +150,122 @@ namespace CSOneNoteRibbonAddIn
                 MessageBox.Show("Error initializing Bookmark window: " + ex.Message);
             }
         }
+        private void Export_All_Bookmarks_Click(object sender, EventArgs e)
+        {
+            using (SaveFileDialog sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "CSV files (*.csv)|*.csv";
+                sfd.FileName = "Bookmarks.csv";
+
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        StringBuilder sb = new StringBuilder();
+
+                        // Write header
+                        var headers = grid.Columns
+                            .Cast<DataGridViewColumn>()
+                            .Select(col => QuoteValue(col.HeaderText));
+                        sb.AppendLine(string.Join(",", headers));
+
+                        // Write rows
+                        foreach (DataGridViewRow row in grid.Rows)
+                        {
+                            if (!row.IsNewRow) // skip the new row placeholder
+                            {
+                                var cells = row.Cells.Cast<DataGridViewCell>()
+                                    .Select(cell => QuoteValue(cell.Value));
+                                sb.AppendLine(string.Join(",", cells));
+                            }
+                        }
+
+                        File.WriteAllText(sfd.FileName, sb.ToString(), Encoding.UTF8);
+                        MessageBox.Show("Export completed!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error exporting: " + ex.Message);
+                    }
+                }
+            }
+        }
+
+        private string QuoteValue(object val)
+        {
+            if (val == null) return "\"\"";
+            string output = val.ToString().Replace("\"", "\"\"");
+            return $"\"{output}\""; // always wrap in quotes
+        }
+
+        private void Open_All_Notes(object sender, EventArgs e)
+        {
+            var currentRow = GetSelectedItem();
+            if (currentRow == null)
+            {
+                MessageBox.Show("No row selected.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (currentRow.Type == "Bookmark")
+            {
+                try
+                {
+                    var app = new Microsoft.Office.Interop.OneNote.Application();
+                    app.NavigateTo(currentRow.OriginalId, "", true); // true opens in new window
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Failed to open OneNote object: " + ex.Message);
+                }
+                return;
+            }
+
+            if (currentRow.Type == "Folder")
+            {
+                // Get all bookmarks in this folder and its subfolders recursively
+                var bookmarks = GetOneNoteObjectsRecursive(currentRow.Id);
+                if (bookmarks.Count == 0)
+                {
+                    MessageBox.Show("No OneNote objects found in this folder or its subfolders.");
+                    return;
+                }
+                var app = new Microsoft.Office.Interop.OneNote.Application();
+                int count = 0;
+                foreach (var bm in bookmarks)
+                {
+                    try
+                    {
+                        // Open each in a new window
+                        app.NavigateTo(bm.OriginalId, "", true);
+                        count++;
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to open: {bm.Name}\n{ex.Message}");
+                    }
+                }
+            }
+        }
+        private List<BookmarkItem> GetOneNoteObjectsRecursive(string folderId)
+        {
+            var result = new List<BookmarkItem>();
+            var children = items.Where(i => i.ParentId == folderId).ToList();
+
+            foreach (var child in children)
+            {
+                if (child.Type == "Bookmark" && !string.IsNullOrEmpty(child.OriginalId))
+                {
+                    result.Add(child);
+                }
+                else if (child.Type == "Folder")
+                {
+                    result.AddRange(GetOneNoteObjectsRecursive(child.Id));
+                }
+            }
+            return result;
+        }
+
         private void listScope_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
