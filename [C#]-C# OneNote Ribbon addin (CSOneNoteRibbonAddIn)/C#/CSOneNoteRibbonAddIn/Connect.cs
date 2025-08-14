@@ -171,6 +171,9 @@ namespace CSOneNoteRibbonAddIn
         /// </summary>
         /// <param name="RibbonID">The ID for the RibbonX UI</param>
         /// <returns>string</returns>
+        /// 
+
+
         public string GetCustomUI(string ribbonID)
         {
             return @"<customUI xmlns='http://schemas.microsoft.com/office/2009/07/customui' onLoad='OnRibbonLoad'>
@@ -190,11 +193,39 @@ namespace CSOneNoteRibbonAddIn
                 </customUI>";
         }
 
+        #region Button Handler
+        public BookMark_Window CreateBookmarkWindow(
+     string selectedId,
+     string selectedScope,
+     string displayText,
+     string notebookName,
+     string notebookColor,
+     string sectionGroupName,
+     string sectionName,
+     string sectionColor,
+     string pageName,
+     string paraContent)
+        {
+            return new BookMark_Window(
+                selectedId,
+                selectedScope,
+                displayText,
+                notebookName,
+                notebookColor,
+                sectionGroupName,
+                sectionName,
+                sectionColor,
+                pageName,
+                paraContent)
+            {
+                StartPosition = FormStartPosition.Manual,
+                TopMost = true
+            };
+        }
         public void OnRibbonLoad(IRibbonUI ribbonUI)
         {
             ribbon = ribbonUI;
         }
-
         public void OnShowFormButtonClick(IRibbonControl control)
         {
             try
@@ -296,6 +327,7 @@ namespace CSOneNoteRibbonAddIn
                 MessageBox.Show("Unexpected error: " + ex.Message);
             }
         }
+        #endregion
 
         #region Helper Methods
         public AddInModel GetCurrentNotebookModel(OneNote.Application oneNoteApp)
@@ -383,20 +415,6 @@ namespace CSOneNoteRibbonAddIn
             return model;
         }
 
-        //private Option_Window CreateNotesWindow(BookMark_Window _bookmarkWindow)
-        //{
-        //    var form = new Option_Window(_bookmarkWindow);
-        //    return form;
-        //}
-
-        //private void PositionFormNearCursor(Form form, int offsetX = 0, int offsetY = 0)
-        //{
-        //    var mousePos = Cursor.Position;
-        //    form.StartPosition = FormStartPosition.Manual;
-        //    form.Location = new Point(mousePos.X + offsetX, mousePos.Y + offsetY);
-        //}
-
-
         private void LoadParagraphs(OneNote.Application oneNoteApp, PageModel page)
         {
             try
@@ -448,6 +466,30 @@ namespace CSOneNoteRibbonAddIn
             System.Windows.Forms.Application.EnableVisualStyles();
             System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
         }
+        public void PositionFormNearCursor(Form form)
+        {
+
+            var cursorPos = Cursor.Position;
+            var screen = Screen.FromPoint(cursorPos);
+            bool goesOffRight = cursorPos.X + form.Width > screen.WorkingArea.Right;
+
+            int x = goesOffRight
+                ? cursorPos.X - form.Width
+                : cursorPos.X;
+
+            int y = cursorPos.Y;
+
+            if (y < screen.WorkingArea.Top)
+                y = screen.WorkingArea.Top;
+            if (y + form.Height > screen.WorkingArea.Bottom)
+                y = screen.WorkingArea.Bottom - form.Height;
+
+            form.Left = x;
+            form.Top = y;
+            form.Show();
+        }
+
+        #region Soon to be deprecated methods
 
         public void GetSelectedOutlineInfo(OneNote.Application oneNoteApp, out string selectedId, out string selectedScope)
         {
@@ -495,105 +537,6 @@ namespace CSOneNoteRibbonAddIn
                 selectedScope = "Page";
             }
         }
-
-        public BookMark_Window CreateBookmarkWindow(
-            string selectedId,
-            string selectedScope,
-            string displayText,
-            string notebookName,
-            string notebookColor,
-            string sectionGroupName,
-            string sectionName,
-            string sectionColor,
-            string pageName,
-            string paraContent)
-        {
-            return new BookMark_Window(
-                selectedId,
-                selectedScope,
-                displayText,
-                notebookName,
-                notebookColor,
-                sectionGroupName,
-                sectionName,
-                sectionColor,
-                pageName,
-                paraContent)
-            {
-                StartPosition = FormStartPosition.Manual,
-                TopMost = true
-            };
-        }
-
-        public void PositionFormNearCursor(Form form)
-        {
-            string tablePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "window_info.txt");
-
-            //if (File.Exists(tablePath))
-            //{
-            //    // Read saved position and size
-            //    string[] lines = File.ReadAllLines(tablePath);
-            //    if (lines.Length == 4 &&
-            //        int.TryParse(lines[0], out int left) &&
-            //        int.TryParse(lines[1], out int top) &&
-            //        int.TryParse(lines[2], out int width) &&
-            //        int.TryParse(lines[3], out int height))
-            //    {
-            //        form.Left = left;
-            //        form.Top = top;
-            //        form.Width = width;
-            //        form.Height = height;
-            //        // Hook event handlers to save position and size when form changes
-            //        form.ResizeEnd += (sender, e) => SaveFormPositionAndSize(form, tablePath);
-            //        form.Move += (sender, e) => SaveFormPositionAndSize(form, tablePath);
-            //        return;
-            //    }
-            //}
-
-            // If no saved data, use default positioning logic
-            var cursorPos = Cursor.Position;
-            var screen = Screen.FromPoint(cursorPos);
-
-            // Check if placing the form to the right would go off screen
-            bool goesOffRight = cursorPos.X + form.Width > screen.WorkingArea.Right;
-
-            // X coordinate — right align if overflow, else left align
-            int x = goesOffRight
-                ? cursorPos.X - form.Width // right-top corner at cursor
-                : cursorPos.X;             // left-top corner at cursor
-
-            // Y coordinate — always keep the top at cursor
-            int y = cursorPos.Y;
-
-            // Ensure it doesn’t go above or below screen
-            if (y < screen.WorkingArea.Top)
-                y = screen.WorkingArea.Top;
-            if (y + form.Height > screen.WorkingArea.Bottom)
-                y = screen.WorkingArea.Bottom - form.Height;
-
-            // Apply position
-            form.Left = x;
-            form.Top = y;
-            // Hook event handlers to save position and size when form changes
-            //form.ResizeEnd += (sender, e) => SaveFormPositionAndSize(form, tablePath);
-            //form.Move += (sender, e) => SaveFormPositionAndSize(form, tablePath);
-            form.Show();
-        }
-
-        private void SaveFormPositionAndSize(Form form, string filePath)
-        {
-            string[] lines = new string[4]
-            {
-                form.Left.ToString(),
-                form.Top.ToString(),
-                form.Width.ToString(),
-                form.Height.ToString()
-            };
-
-            File.WriteAllLines(filePath, lines);
-        }
-
-
         /// <summary>
         ///     Implements the OnGetImage method in customUI.xml
         /// </summary>
@@ -628,11 +571,12 @@ namespace CSOneNoteRibbonAddIn
             form.Dispose();
             form = null;
             context = null;
-            owner = null;           
+            owner = null;
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
         }
+        #endregion
 
 
     }
