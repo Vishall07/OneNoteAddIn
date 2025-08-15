@@ -1,4 +1,5 @@
 # OneNote Bookmarks Add-in
+<img width="1362" height="780" alt="image" src="https://github.com/user-attachments/assets/6d482b46-186b-4dad-8639-4f4ddfc65766" />
 
 A custom OneNote add-in that adds a **Bookmarks** menu to the OneNote ribbon. This tool allows users to save, organize, and quickly access OneNote objects (notebooks, sections, pages, paragraphs) through a hierarchical bookmarks menu.
 
