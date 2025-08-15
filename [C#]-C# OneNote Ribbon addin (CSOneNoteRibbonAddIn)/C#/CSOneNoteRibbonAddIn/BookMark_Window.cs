@@ -9,6 +9,9 @@ using System.Text;
 using System.Windows.Forms;
 using System.Xml.Linq;
 using Excel = Microsoft.Office.Interop.Excel;
+using System.Runtime.InteropServices; // Add this at the top if not already present
+
+
 #endregion
 
 namespace CSOneNoteRibbonAddIn
@@ -40,6 +43,12 @@ namespace CSOneNoteRibbonAddIn
         private ListBox listScope;
         private Point mouseOffset;
         private bool isDragging = false;
+        [DllImport("user32.dll")]
+        public static extern bool ReleaseCapture();
+        [DllImport("user32.dll")]
+        public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
+        private const int WM_NCLBUTTONDOWN = 0xA1;
+        private const int HTCAPTION = 0x2;
         #endregion
 
         #region Initialization and Grid Building
@@ -89,9 +98,6 @@ namespace CSOneNoteRibbonAddIn
                 });
 
                 listScope.Click += ListScope_Click; 
-                listScope.MouseDown += listScope_MouseDown;
-                listScope.MouseMove += listScope_MouseMove;
-                listScope.MouseUp += listScope_MouseUp;
 
                 grid = new DataGridView
                 {
@@ -157,7 +163,7 @@ namespace CSOneNoteRibbonAddIn
                 this.paraContent = paraContent;
                 this.Font = new Font("Segoe UI", 10);
                 this.BackColor = ColorTranslator.FromHtml("#f3f3f3");
-
+                this.MouseDown += Form_MouseDown;
                 LoadTable();
                 UpdateBookmarkInfo(selectedId, selectedScope, selectedText, notebookName, notebookColor,
                     sectionGroupName, sectionName, sectionColor, pageName, paraContent);
@@ -547,31 +553,6 @@ namespace CSOneNoteRibbonAddIn
         #endregion
 
         #region List Scope Handlers
-        private void listScope_MouseDown(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left)
-            {
-                mouseOffset = new Point(e.X, e.Y);
-                isDragging = true;
-            }
-        }
-        private void listScope_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (isDragging)
-            {
-                Point newLocation = listScope.Location;
-                newLocation.X += e.X - mouseOffset.X;
-                newLocation.Y += e.Y - mouseOffset.Y;
-                listScope.Location = newLocation;
-            }
-        }
-        private void listScope_MouseUp(object sender, MouseEventArgs e)
-        {
-            if (isDragging)
-            {
-                isDragging = false;
-            }
-        }
         private void Grid_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             try
@@ -698,7 +679,6 @@ namespace CSOneNoteRibbonAddIn
                 SaveToFile();
                 cachedList = null;
                 RefreshGridDisplay();
-                this.Hide();
             }
             catch (Exception ex)
             {
@@ -944,6 +924,14 @@ namespace CSOneNoteRibbonAddIn
                     break;
             }
             return depth;
+        }
+        private void Form_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                ReleaseCapture();
+                SendMessage(this.Handle, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+            }
         }
         #endregion
 
@@ -1365,7 +1353,6 @@ namespace CSOneNoteRibbonAddIn
                 grid.Columns["PageName"].Visible = false;
                 grid.Columns["Depth"].Visible = false;
                 grid.Columns["OriginalId"].Visible = false;
-
                 grid.Columns["Notes"].ReadOnly = false;
                 grid.Columns["Name"].ReadOnly = false;
 
@@ -1390,6 +1377,7 @@ namespace CSOneNoteRibbonAddIn
                 // Subscribe to CellPainting to draw image + text in "Name" column
                 grid.CellPainting -= Grid_CellPainting; // Avoid duplicate subscriptions
                 grid.CellPainting += Grid_CellPainting;
+                grid.ScrollBars = ScrollBars.Both;
 
                 if (flatList == null)
                     flatList = FlattenForDisplay(null, 0);

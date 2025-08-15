@@ -468,24 +468,38 @@ namespace CSOneNoteRibbonAddIn
         }
         public void PositionFormNearCursor(Form form)
         {
+            var desiredWidth = 600;
+            var desiredHeight = 500;
 
             var cursorPos = Cursor.Position;
             var screen = Screen.FromPoint(cursorPos);
-            bool goesOffRight = cursorPos.X + form.Width > screen.WorkingArea.Right;
 
-            int x = goesOffRight
-                ? cursorPos.X - form.Width
-                : cursorPos.X;
-
+            // Start with default location at cursor
+            int x = cursorPos.X;
             int y = cursorPos.Y;
 
+            // Use 600x300 if it fits, otherwise keep form's existing size
+            int formWidth = desiredWidth;
+            int formHeight = desiredHeight;
+
+            // Adjust horizontal position if it overflows right side
+            if (x + formWidth > screen.WorkingArea.Right)
+                x = cursorPos.X - formWidth;
+
+            // Adjust for left boundary
+            if (x < screen.WorkingArea.Left)
+                x = screen.WorkingArea.Left;
+
+            // Adjust vertical position
             if (y < screen.WorkingArea.Top)
                 y = screen.WorkingArea.Top;
-            if (y + form.Height > screen.WorkingArea.Bottom)
-                y = screen.WorkingArea.Bottom - form.Height;
 
-            form.Left = x;
-            form.Top = y;
+            if (y + formHeight > screen.WorkingArea.Bottom)
+                y = screen.WorkingArea.Bottom - formHeight;
+
+            // Apply size and position
+            form.Size = new Size(formWidth, formHeight);
+            form.Location = new Point(x, y);
             form.Show();
         }
 
