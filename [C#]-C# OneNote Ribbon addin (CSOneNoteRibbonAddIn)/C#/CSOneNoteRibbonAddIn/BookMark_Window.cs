@@ -121,6 +121,7 @@ namespace CSOneNoteRibbonAddIn
                 contextMenu.Items.Add("New Folder", null, NewFolder_Click);
                 contextMenu.Items.Add("Rename", null, Rename_Click);
                 contextMenu.Items.Add("Delete", null, Delete_Click);
+                contextMenu.Items.Add("Add URL Bookmark", null, AddUrlBookmark_Click);
                 contextMenu.Items.Add("TextWrap On/Off", null, TextWrap_Click);
                 contextMenu.Items.Add("Text Wrap Current Row", null, TextWrapCurrentRow_Click);
                 contextMenu.Items.Add("Open All Notes", null, Open_All_Notes); 
@@ -237,6 +238,38 @@ namespace CSOneNoteRibbonAddIn
         #endregion
 
         #region CONTEXT MENU HANDLERS   
+        private void AddUrlBookmark_Click(object sender, EventArgs e)
+        {
+            using (var form = new UrlBookmarkForm())
+            {
+                if (form.ShowDialog(this) == DialogResult.OK)
+                {
+                    var newBookmark = new BookmarkItem
+                    {
+                        Type = "Bookmark",
+                        Scope = "URL",
+                        Name = form.BookmarkName,
+                        ParentId = null,
+                        Id = "URL_" + Guid.NewGuid().ToString(),
+                        OriginalId = form.BookmarkUrl, // Store URL here
+                        NotebookName = "",
+                        NotebookColor = "",
+                        SectionGroupName = "",
+                        SectionName = "",
+                        SectionColor = "",
+                        PageName = "",
+                        ParaContent = "",
+                        Notes = "",
+                        SortOrder = items.Count
+                    };
+
+                    items.Add(newBookmark);
+                    SaveToFile();
+                    cachedList = null;
+                    RefreshGridDisplay();
+                }
+            }
+        }
         private void Settings_Click(object sender, EventArgs e)
         {
             using (FontSizeDialog dlg = new FontSizeDialog())
@@ -279,19 +312,6 @@ namespace CSOneNoteRibbonAddIn
         
                 }
             }
-        }
-        private void TextWrapMenuItem_Click(object sender, EventArgs e)
-        {
-            if (clickedColumnHeader == null)
-                return;
-
-            var currentWrap = clickedColumnHeader.DefaultCellStyle.WrapMode;
-            if (currentWrap == DataGridViewTriState.True)
-                clickedColumnHeader.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
-            else
-                clickedColumnHeader.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
-
-            grid.AutoResizeRows(DataGridViewAutoSizeRowsMode.AllCells);
         }
         private void grid_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
         {
@@ -409,8 +429,22 @@ namespace CSOneNoteRibbonAddIn
                 MessageBox.Show("No row selected.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-
-            if (currentRow.Type == "Bookmark")
+            if(currentRow.Scope == "URL")
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = currentRow.OriginalId,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Failed to open URL: " + ex.Message);
+                }
+            }
+            else if (currentRow.Type == "Bookmark" )
             {
                 try
                 {
@@ -423,7 +457,6 @@ namespace CSOneNoteRibbonAddIn
                 }
                 return;
             }
-
             if (currentRow.Type == "Folder")
             {
                 // Get all bookmarks in this folder and its subfolders recursively
@@ -439,9 +472,13 @@ namespace CSOneNoteRibbonAddIn
                 {
                     try
                     {
-                        // Open each in a new window
-                        app.NavigateTo(bm.OriginalId, "", true);
-                        count++;
+                        if(bm.Scope != "URL")
+                        {
+                            // Open each in a new window
+                            app.NavigateTo(bm.OriginalId, "", true);
+                            count++;
+                        }
+
                     }
                     catch (Exception ex)
                     {
@@ -470,6 +507,7 @@ namespace CSOneNoteRibbonAddIn
         }
         private void TextWrap_Click(object sender, EventArgs e)
         {
+            RefreshGridDisplay();
             isTextWrapEnabled = !isTextWrapEnabled;
 
             foreach (DataGridViewColumn column in grid.Columns)
@@ -492,6 +530,19 @@ namespace CSOneNoteRibbonAddIn
                     : DataGridViewTriState.True;
             }
             grid.AutoResizeRow(rowIndex, DataGridViewAutoSizeRowMode.AllCells);
+        }
+        private void TextWrapMenuItem_Click(object sender, EventArgs e)
+        {
+            if (clickedColumnHeader == null)
+                return;
+
+            var currentWrap = clickedColumnHeader.DefaultCellStyle.WrapMode;
+            if (currentWrap == DataGridViewTriState.True)
+                clickedColumnHeader.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            else
+                clickedColumnHeader.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+
+            grid.AutoResizeRows(DataGridViewAutoSizeRowsMode.AllCells);
         }
         #endregion
 
@@ -536,8 +587,24 @@ namespace CSOneNoteRibbonAddIn
                 if (item == null) return;
 
                 string clickedColumn = grid.Columns[e.ColumnIndex].Name;
+                if (clickedColumn == "Name" && item.Scope == "URL")
+                {
 
-                if (clickedColumn == "Name" && item.Type == "Bookmark")
+                        try
+                        {
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                            {
+                                FileName = item.OriginalId,
+                                UseShellExecute = true
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Failed to open URL: " + ex.Message);
+                        }
+                    
+                }
+                else if (clickedColumn == "Name" && item.Type == "Bookmark")
                 {
                     try
                     {
@@ -557,12 +624,15 @@ namespace CSOneNoteRibbonAddIn
                     {
                         MessageBox.Show("Failed to open OneNote object: " + exNav.Message);
                     }
+
                 }
                 else if (clickedColumn == "Notes")
                 {
                     grid.Rows[e.RowIndex].Cells["Notes"].ReadOnly = false;
                     grid.BeginEdit(true);
                 }
+                
+
             }
             catch (Exception ex)
             {
@@ -900,23 +970,6 @@ namespace CSOneNoteRibbonAddIn
                     SaveToFile();
                     RefreshGridDisplay(cachedList ?? null);
                 }
-                else if (clickedColumn == "Name" && item.Type == "Bookmark")
-                {
-                    try
-                    {
-                        var app = new Microsoft.Office.Interop.OneNote.Application();
-                        app.NavigateTo(item.OriginalId);
-                    }
-                    catch (Exception exNav)
-                    {
-                        MessageBox.Show("Failed to open OneNote page: " + exNav.Message);
-                    }
-                }
-                else if (clickedColumn == "Notes")
-                {
-                    grid.Rows[e.RowIndex].Cells["Notes"].ReadOnly = false;
-                    grid.BeginEdit(true);
-                }
             }
             catch (Exception ex)
             {
@@ -1090,130 +1143,6 @@ namespace CSOneNoteRibbonAddIn
         }
         #endregion
 
-        #region SOON TO BE REMOVED
-        public static class Prompt
-        {
-            public static string ShowDialog(string text, string caption, string defaultText)
-            {
-                Form prompt = new Form()
-                {
-                    Width = 400,
-                    Height = 150,
-                    FormBorderStyle = FormBorderStyle.FixedDialog,
-                    Text = caption,
-                    StartPosition = FormStartPosition.CenterParent,
-                    MinimizeBox = false,
-                    MaximizeBox = false
-                };
-                Label textLabel = new Label() { Left = 20, Top = 20, Text = text, AutoSize = true };
-                TextBox inputBox = new TextBox() { Left = 20, Top = 50, Width = 340, Text = defaultText };
-                Button confirmation = new Button() { Text = "OK", Left = 280, Width = 80, Top = 80, DialogResult = DialogResult.OK };
-                confirmation.Click += (sender, e) => { prompt.Close(); };
-                prompt.Controls.Add(textLabel);
-                prompt.Controls.Add(inputBox);
-                prompt.Controls.Add(confirmation);
-                prompt.AcceptButton = confirmation;
-
-                return prompt.ShowDialog() == DialogResult.OK ? inputBox.Text : null;
-            }
-        }
-        private void BtnSave_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(selectedId))
-                {
-                    MessageBox.Show("No bookmark selected to save.");
-                    return;
-                }
-
-                string bookmarkName;
-                string selected = selectedScope; // Use selectedScope not selectedId
-
-                switch (selected)
-                {
-                    case "Current Paragraph":
-                        bookmarkName = paraContent ?? "Unnamed Paragraph";
-                        break;
-                    case "Current Page":
-                        bookmarkName = pageName ?? "Unnamed Page";
-                        break;
-                    case "Current Section":
-                        bookmarkName = sectionName ?? "Unnamed Section";
-                        break;
-                    case "Current Section Group":
-                        bookmarkName = sectionGroupName ?? "Unnamed Section Group";
-                        break;
-                    case "Current Notebook":
-                        bookmarkName = notebookName ?? "Unnamed Notebook";
-                        break;
-                    default:
-                        bookmarkName = "Unnamed Bookmark";
-                        break;
-                }
-
-                var newBookmark = new BookmarkItem
-                {
-                    Type = "Bookmark",
-                    Scope = selected,
-                    Name = bookmarkName,
-                    ParentId = null,
-                    Id = selectedId + "_" + Guid.NewGuid().ToString(),    // Composite unique ID
-                    OriginalId = selectedId, // The actual OneNote ID
-                    NotebookName = notebookName,
-                    NotebookColor = notebookColor,
-                    SectionGroupName = sectionGroupName,
-                    SectionName = sectionName,
-                    SectionColor = sectionColor,
-                    PageName = pageName,
-                    ParaContent = paraContent,
-                    Notes = "",
-                    SortOrder = items.Count // append at end
-                };
-
-                // Do NOT remove duplicates!
-                items.Add(newBookmark);
-
-                SaveToFile();
-                cachedList = null;  // reset cached list on data change
-                RefreshGridDisplay();
-                this.Hide();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error saving: " + ex.Message);
-            }
-        }
-        private string IndentName(string name, int depth, bool isFolder = false, bool expanded = true, string scope = "")
-        {
-            string indent = new string(' ', depth * 6);
-
-            if (isFolder)
-            {
-                // Folder open or closed icon
-                return indent + (expanded ? "📂 " : "📁 ") + name;
-            }
-            else
-            {
-                string icon;
-
-                switch (scope)
-                {
-                    case "Current Notebook": icon = "📓 "; break;  // Notebook
-                    case "Current Section Group": icon = "📙 "; break;  // Section Group
-                    case "Current Section": icon = "📑 "; break;  // Section
-                    case "Current Page": icon = "📝 "; break;  // Page
-                    case "Current Paragraph": icon = "¶ "; break;  // Paragraph
-                    case "File": icon = "📄 "; break;  // File
-                    case "NotebookObject": icon = "📔 "; break;  // Notebook object
-                    default: icon = "🔖 "; break;  // Generic bookmark
-                }
-
-                return indent + icon + name;
-            }
-        }
-        #endregion
-
         #region GRID RELATED METHODS
         private void Grid_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
         {
@@ -1227,65 +1156,71 @@ namespace CSOneNoteRibbonAddIn
                     return;
                 }
 
-                string imagePath;
+                Image img;
 
                 if (item.Type == "Folder")
                 {
-                    if (item.IsExpanded)
-                        imagePath = @"E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\Resources\folder_open.png"; 
-                    else
-                        imagePath = @"E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\Resources\folder_close.png"; 
+                    img = item.IsExpanded
+                        ? Properties.Resources.folder_open
+                        : Properties.Resources.folder_close;
                 }
                 else
                 {
                     switch (item.Scope)
                     {
                         case "Current Notebook":
-                            imagePath = @"E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\Resources\note_icon.png";
+                            img = Properties.Resources.note_icon;
                             break;
                         case "Current Section Group":
-                            imagePath = @"E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\Resources\section_group.png";
+                            img = Properties.Resources.section_group;
                             break;
                         case "Current Section":
-                            imagePath = @"E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\Resources\section.png";
+                            img = Properties.Resources.section;
                             break;
                         case "Current Page":
-                            imagePath = @"E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\Resources\page.png";
+                            img = Properties.Resources.page;
                             break;
                         case "Current Paragraph":
-                            imagePath = @"E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\Resources\para.png";
+                            img = Properties.Resources.para;
+                            break;
+                        case "URL":
+                            img = Properties.Resources.url;
                             break;
                         default:
-                            imagePath = @"E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\Resources\note_icon.png";
+                            img = Properties.Resources.note_icon;
                             break;
                     }
                 }
 
-                // Calculate indent in pixels based on depth (e.g., 6 spaces * font width per space)
+                // Calculate indent based on depth
                 int spaceWidth = TextRenderer.MeasureText(" ", e.CellStyle.Font).Width;
-                int indentPixels = GetDepth(item) * 2 * spaceWidth;
+                int indentPixels = 4 + GetDepth(item) * 2 * spaceWidth;
 
-                using (Image img = Image.FromFile(imagePath))
+                int imageHeight = e.CellStyle.Font.Height;
+                int imageWidth = (int)(img.Width * ((float)imageHeight / img.Height));
+                int imageTop = e.CellBounds.Top + (e.CellBounds.Height - imageHeight) / 2;
+
+                // Draw image
+                Rectangle imageRect = new Rectangle(e.CellBounds.Left + indentPixels, imageTop, imageWidth, imageHeight);
+                e.Graphics.DrawImage(img, imageRect);
+
+                // Draw text
+                string text = grid.Rows[e.RowIndex].Cells["Name"].Value?.ToString();
+                if (!string.IsNullOrEmpty(text))
                 {
-                    int imageHeight = e.CellStyle.Font.Height;
-                    int imageWidth = (int)(img.Width * ((float)imageHeight / img.Height));
-                    int imageTop = e.CellBounds.Top + (e.CellBounds.Height - imageHeight) / 2;
-
-                    // Start image drawing after indentPixels from the left bound of the cell
-                    Rectangle imageRect = new Rectangle(e.CellBounds.Left + indentPixels, imageTop, imageWidth, imageHeight);
-                    e.Graphics.DrawImage(img, imageRect);
-
-                    // Draw the text after the image with some padding
-                    string text = grid.Rows[e.RowIndex].Cells["Name"].Value?.ToString();
-                    if (!string.IsNullOrEmpty(text))
-                    {
-                        Rectangle textRect = new Rectangle(imageRect.Right + 4, e.CellBounds.Top, e.CellBounds.Width - imageRect.Width - indentPixels - 6, e.CellBounds.Height);
-                        TextRenderer.DrawText(e.Graphics, text, e.CellStyle.Font, textRect, e.CellStyle.ForeColor, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
-                    }
+                    Rectangle textRect = new Rectangle(
+                        imageRect.Right + 4,
+                        e.CellBounds.Top,
+                        e.CellBounds.Width - imageRect.Width - indentPixels - 6,
+                        e.CellBounds.Height
+                    );
+                    TextRenderer.DrawText(e.Graphics, text, e.CellStyle.Font, textRect, e.CellStyle.ForeColor, TextFormatFlags.VerticalCenter | TextFormatFlags.Left);
                 }
+
                 e.Handled = true;
             }
         }
+
         private void Grid_KeyDown(object sender, KeyEventArgs e)
         {
             try
@@ -1585,6 +1520,129 @@ namespace CSOneNoteRibbonAddIn
         }
         #endregion
 
+        #region SOON TO BE REMOVED
+        public static class Prompt
+        {
+            public static string ShowDialog(string text, string caption, string defaultText)
+            {
+                Form prompt = new Form()
+                {
+                    Width = 400,
+                    Height = 150,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    Text = caption,
+                    StartPosition = FormStartPosition.CenterParent,
+                    MinimizeBox = false,
+                    MaximizeBox = false
+                };
+                Label textLabel = new Label() { Left = 20, Top = 20, Text = text, AutoSize = true };
+                TextBox inputBox = new TextBox() { Left = 20, Top = 50, Width = 340, Text = defaultText };
+                Button confirmation = new Button() { Text = "OK", Left = 280, Width = 80, Top = 80, DialogResult = DialogResult.OK };
+                confirmation.Click += (sender, e) => { prompt.Close(); };
+                prompt.Controls.Add(textLabel);
+                prompt.Controls.Add(inputBox);
+                prompt.Controls.Add(confirmation);
+                prompt.AcceptButton = confirmation;
+
+                return prompt.ShowDialog() == DialogResult.OK ? inputBox.Text : null;
+            }
+        }
+        private void BtnSave_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(selectedId))
+                {
+                    MessageBox.Show("No bookmark selected to save.");
+                    return;
+                }
+
+                string bookmarkName;
+                string selected = selectedScope; // Use selectedScope not selectedId
+
+                switch (selected)
+                {
+                    case "Current Paragraph":
+                        bookmarkName = paraContent ?? "Unnamed Paragraph";
+                        break;
+                    case "Current Page":
+                        bookmarkName = pageName ?? "Unnamed Page";
+                        break;
+                    case "Current Section":
+                        bookmarkName = sectionName ?? "Unnamed Section";
+                        break;
+                    case "Current Section Group":
+                        bookmarkName = sectionGroupName ?? "Unnamed Section Group";
+                        break;
+                    case "Current Notebook":
+                        bookmarkName = notebookName ?? "Unnamed Notebook";
+                        break;
+                    default:
+                        bookmarkName = "Unnamed Bookmark";
+                        break;
+                }
+
+                var newBookmark = new BookmarkItem
+                {
+                    Type = "Bookmark",
+                    Scope = selected,
+                    Name = bookmarkName,
+                    ParentId = null,
+                    Id = selectedId + "_" + Guid.NewGuid().ToString(),    // Composite unique ID
+                    OriginalId = selectedId, // The actual OneNote ID
+                    NotebookName = notebookName,
+                    NotebookColor = notebookColor,
+                    SectionGroupName = sectionGroupName,
+                    SectionName = sectionName,
+                    SectionColor = sectionColor,
+                    PageName = pageName,
+                    ParaContent = paraContent,
+                    Notes = "",
+                    SortOrder = items.Count // append at end
+                };
+
+                // Do NOT remove duplicates!
+                items.Add(newBookmark);
+
+                SaveToFile();
+                cachedList = null;  // reset cached list on data change
+                RefreshGridDisplay();
+                this.Hide();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error saving: " + ex.Message);
+            }
+        }
+        private string IndentName(string name, int depth, bool isFolder = false, bool expanded = true, string scope = "")
+        {
+            string indent = new string(' ', depth * 6);
+
+            if (isFolder)
+            {
+                // Folder open or closed icon
+                return indent + (expanded ? "📂 " : "📁 ") + name;
+            }
+            else
+            {
+                string icon;
+
+                switch (scope)
+                {
+                    case "Current Notebook": icon = "📓 "; break;  // Notebook
+                    case "Current Section Group": icon = "📙 "; break;  // Section Group
+                    case "Current Section": icon = "📑 "; break;  // Section
+                    case "Current Page": icon = "📝 "; break;  // Page
+                    case "Current Paragraph": icon = "¶ "; break;  // Paragraph
+                    case "File": icon = "📄 "; break;  // File
+                    case "NotebookObject": icon = "📔 "; break;  // Notebook object
+                    default: icon = "🔖 "; break;  // Generic bookmark
+                }
+
+                return indent + icon + name;
+            }
+        }
+        #endregion
         public class FontSizeDialog : Form
         {
             private NumericUpDown numericFontSize;
@@ -1670,6 +1728,76 @@ namespace CSOneNoteRibbonAddIn
             var id = selectedRow.Cells["Id"].Value?.ToString();
             return items.FirstOrDefault(i => i.Id == id);
         }
+        public class UrlBookmarkForm : Form
+        {
+            public string BookmarkUrl { get; private set; }
+            public string BookmarkName { get; private set; }
+
+            private TextBox txtUrl;
+            private TextBox txtName;
+            private Button btnOk;
+            private Button btnCancel;
+
+            public UrlBookmarkForm()
+            {
+                this.Text = "Add URL Bookmark";
+                this.FormBorderStyle = FormBorderStyle.FixedDialog;
+                this.StartPosition = FormStartPosition.CenterParent;
+                this.Width = 400;
+                this.Height = 160;
+                this.MaximizeBox = false;
+                this.MinimizeBox = false;
+                this.ShowInTaskbar = false;
+
+                Label lblUrl = new Label() { Text = "URL:", Left = 10, Top = 20, Width = 50 };
+                txtUrl = new TextBox() { Left = 70, Top = 18, Width = 300 };
+                txtUrl.TextChanged += TxtUrl_TextChanged;
+
+                Label lblName = new Label() { Text = "Name:", Left = 10, Top = 50, Width = 50 };
+                txtName = new TextBox() { Left = 70, Top = 48, Width = 300 };
+
+                btnOk = new Button() { Text = "OK", Left = 210, Width = 70, Top = 85, DialogResult = DialogResult.OK };
+                btnOk.Click += BtnOk_Click;
+
+                btnCancel = new Button() { Text = "Cancel", Left = 290, Width = 70, Top = 85, DialogResult = DialogResult.Cancel };
+
+                this.Controls.Add(lblUrl);
+                this.Controls.Add(txtUrl);
+                this.Controls.Add(lblName);
+                this.Controls.Add(txtName);
+                this.Controls.Add(btnOk);
+                this.Controls.Add(btnCancel);
+
+                this.AcceptButton = btnOk;
+                this.CancelButton = btnCancel;
+            }
+
+            private void TxtUrl_TextChanged(object sender, EventArgs e)
+            {
+                try
+                {
+                    Uri uri = new Uri(txtUrl.Text);
+                    txtName.Text = uri.Host;
+                }
+                catch
+                {
+                    // Invalid URL or empty, don't update name
+                }
+            }
+
+            private void BtnOk_Click(object sender, EventArgs e)
+            {
+                if (string.IsNullOrWhiteSpace(txtUrl.Text))
+                {
+                    MessageBox.Show("Please enter a valid URL.", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    this.DialogResult = DialogResult.None;
+                    return;
+                }
+                BookmarkUrl = txtUrl.Text.Trim();
+                BookmarkName = string.IsNullOrWhiteSpace(txtName.Text) ? BookmarkUrl : txtName.Text.Trim();
+            }
+        }
+
 
     }
 }
