@@ -230,13 +230,7 @@ namespace CSOneNoteRibbonAddIn
         {
             try
             {
-                var oneNoteApp = new OneNote.Application();
-                var model = GetCurrentNotebookModel(oneNoteApp);
-                if (model == null)
-                {
-                    MessageBox.Show("Failed to load the current notebook model.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
+                var model = new AddInModel();
 
                 // Extract data from your model
                 string selectedId = model.Page?.Id ?? "";

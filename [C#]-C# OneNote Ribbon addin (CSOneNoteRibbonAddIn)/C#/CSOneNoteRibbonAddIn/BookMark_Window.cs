@@ -1,15 +1,15 @@
 ﻿#region NameSpaces
+using Microsoft.Office.Interop.OneNote;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices; 
 using System.Text;
 using System.Windows.Forms;
-using System.Xml.Linq;
-using Excel = Microsoft.Office.Interop.Excel;
-using System.Runtime.InteropServices; // Add this at the top if not already present
+using OneNote = Microsoft.Office.Interop.OneNote;
 
 
 #endregion
@@ -624,11 +624,37 @@ namespace CSOneNoteRibbonAddIn
         {
             try
             {
+                var oneNoteApp = new OneNote.Application();
+                var model = GetCurrentNotebookModel(oneNoteApp);
+                if (model == null)
+                {
+                    MessageBox.Show("Failed to load the current notebook model.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // Extract data from your model
+                string selectedId = model.Page?.Id ?? "";
+                string selectedScope = "page";
+                string displayText = model.Page?.Name ?? "";
+                string notebookName = model.NotebookName ?? "";
+                string notebookColor = model.NotebookColor ?? "";
+                string sectionGroupName = model.SectionGroup?.Name ?? "";
+                string sectionName = model.Section?.Name ?? "";
+                string sectionColor = model.Section?.Color ?? "";
+                string pageName = model.Page?.Name ?? "";
+                string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "";
+
                 if (string.IsNullOrEmpty(selectedId))
                 {
                     MessageBox.Show("No bookmark selected to save.");
                     return;
                 }
+                UpdateBookmarkInfo(
+                            selectedId, selectedScope, displayText,
+                            notebookName, notebookColor,
+                            sectionGroupName, sectionName, sectionColor,
+                            pageName, paraContent);
+
 
                 string bookmarkName;
                 string selected = listScope.SelectedItem.ToString();
@@ -819,6 +845,133 @@ namespace CSOneNoteRibbonAddIn
         #endregion
 
         #region HELPERS
+        public AddInModel GetCurrentNotebookModel(OneNote.Application oneNoteApp)
+        {
+            var model = new AddInModel();
+
+            try
+            {
+                // Get the entire hierarchy with pages
+                string hierarchyXml;
+                oneNoteApp.GetHierarchy("", OneNote.HierarchyScope.hsPages, out hierarchyXml);
+
+                var doc = new System.Xml.XmlDocument();
+                doc.LoadXml(hierarchyXml);
+
+                var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
+                nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
+
+                // Get current page id
+                var window = oneNoteApp.Windows.CurrentWindow;
+                string currentPageId = window.CurrentPageId;
+
+                // Find current page node
+                var pageNode = doc.SelectSingleNode($"//one:Page[@ID='{currentPageId}']", nsmgr);
+                if (pageNode == null)
+                    return null; // current page not found
+
+                // Get current section node (parent of page)
+                var sectionNode = pageNode.ParentNode;
+                if (sectionNode == null || sectionNode.Name != "one:Section")
+                    return null;
+
+                // Get current notebook node (ancestor notebook)
+                var notebookNode = sectionNode.ParentNode;
+
+                // If section is inside SectionGroup, parent is SectionGroup, notebook is one level above
+                SectionGroupModel sectionGroupModel = null;
+                if (notebookNode.Name == "one:SectionGroup")
+                {
+                    var sectionGroupNode = notebookNode;
+                    notebookNode = sectionGroupNode.ParentNode;
+
+                    sectionGroupModel = new SectionGroupModel
+                    {
+                        Id = sectionGroupNode.Attributes["ID"]?.Value,
+                        Name = sectionGroupNode.Attributes["name"]?.Value,
+                    };
+
+                    model.SectionGroup = sectionGroupModel;
+                }
+
+                if (notebookNode == null || notebookNode.Name != "one:Notebook")
+                    return null;
+
+                // Fill notebook info
+                model.NotebookId = notebookNode.Attributes["ID"]?.Value;
+                model.NotebookName = notebookNode.Attributes["name"]?.Value;
+                model.NotebookColor = notebookNode.Attributes["color"]?.Value;
+
+                // Fill current section info
+                var sectionModel = new SectionModel
+                {
+                    Id = sectionNode.Attributes["ID"]?.Value,
+                    Name = sectionNode.Attributes["name"]?.Value,
+                    Color = sectionNode.Attributes["color"]?.Value
+                };
+                model.Section = sectionModel;
+
+                // Fill current page info
+                var pageModel = new PageModel
+                {
+                    Id = pageNode.Attributes["ID"]?.Value,
+                    Name = pageNode.Attributes["name"]?.Value
+                };
+
+                LoadParagraphs(oneNoteApp, pageModel); // load paragraphs into current page
+                model.Page = pageModel;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading OneNote hierarchy: {ex.Message}", "Error", MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                throw;
+            }
+
+            return model;
+        }
+        private void LoadParagraphs(OneNote.Application oneNoteApp, PageModel page)
+        {
+            try
+            {
+                string pageXml;
+                oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
+
+                var doc = new System.Xml.XmlDocument();
+                doc.LoadXml(pageXml);
+
+                var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
+                nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
+
+                // Select all paragraphs inside page content (Text elements inside Outline > OEChildren > OE)
+                // This XPath targets the text content inside paragraph nodes
+                var paragraphNodes = doc.SelectNodes("//one:Outline/one:OEChildren/one:OE/one:T", nsmgr);
+                if (paragraphNodes != null)
+                {
+                    int index = 1;
+                    foreach (System.Xml.XmlNode paraNode in paragraphNodes)
+                    {
+                        string paraText = paraNode.InnerText?.Trim();
+                        if (!string.IsNullOrEmpty(paraText))
+                        {
+                            page.Paragraphs.Add(new ParagraphModel
+                            {
+                                // There is no ID on text nodes, so an index based Id or other unique ID can be used here
+                                Id = page.Id + "_para_" + index,
+                                Name = paraText
+                            });
+                            index++;
+                        }
+                        break;
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw;
+            }
+        }
         private List<BookmarkItem> FlattenForDisplay(string parentId, int depth)
         {
             var result = new List<BookmarkItem>();
@@ -1430,7 +1583,7 @@ namespace CSOneNoteRibbonAddIn
             }
         }
         #endregion
-
+        
         #region Window Size and Position
         private string QuoteValue(object val)
         {
