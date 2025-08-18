@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.InteropServices; 
 using System.Text;
 using System.Windows.Forms;
+using System.Xml;
 using OneNote = Microsoft.Office.Interop.OneNote;
 
 
@@ -133,7 +134,7 @@ namespace CSOneNoteRibbonAddIn
                 contextMenu.Items.Add("Open All Notes", null, Open_All_Notes); 
                 contextMenu.Items.Add("Export All Bookmarks", null, Export_All_Bookmarks_Click);
                 contextMenu.Items.Add("Settings", null, Settings_Click);
-
+                contextMenu.Items.Add("Show Method Time Logs", null, ShowMethodLogs_Click);
 
                 //Controls.Add(btnDelete);
                 Controls.Add(grid);
@@ -244,6 +245,11 @@ namespace CSOneNoteRibbonAddIn
         #endregion
 
         #region CONTEXT MENU HANDLERS   
+        private void ShowMethodLogs_Click(object sender, EventArgs e)
+        {
+            var win = new MethodLogWindow();
+            win.ShowDialog(this);
+        }
         private void AddUrlBookmark_Click(object sender, EventArgs e)
         {
             using (var form = new UrlBookmarkForm())
@@ -770,47 +776,53 @@ namespace CSOneNoteRibbonAddIn
         }
         private void LoadTable()
         {
-            items.Clear();
-            if (!File.Exists(tablePath)) return;
-            try
+            using (MethodTimerLog.Time("LoadTable"))
             {
-                var lines = File.ReadAllLines(tablePath);
-                foreach (var line in lines)
+                items.Clear();
+                if (!File.Exists(tablePath)) return;
+                try
                 {
-                    var parts = line.Split(new[] { ',' }, 16); // Now 16 fields
-                    var item = new BookmarkItem
+                    var lines = File.ReadAllLines(tablePath);
+                    foreach (var line in lines)
                     {
-                        Type = parts[0],
-                        Scope = parts[1],
-                        Id = parts[2],
-                        OriginalId = parts[3], // NEW!
-                        ParentId = parts[4] == "null" ? null : parts[4],
-                        Name = parts[5],
-                        NotebookName = parts[6],
-                        NotebookColor = parts[7],
-                        SectionGroupName = parts[8],
-                        SectionName = parts[9],
-                        SectionColor = parts[10],
-                        PageName = parts[11],
-                        ParaContent = parts[12],
-                        Notes = parts[13],
-                        IsExpanded = parts[14] == "1",
-                        SortOrder = (parts.Length >= 16 && int.TryParse(parts[15], out var so)) ? so : 0
-                    };
+                        var parts = line.Split(new[] { ',' }, 16); // Now 16 fields
+                        var item = new BookmarkItem
+                        {
+                            Type = parts[0],
+                            Scope = parts[1],
+                            Id = parts[2],
+                            OriginalId = parts[3], // NEW!
+                            ParentId = parts[4] == "null" ? null : parts[4],
+                            Name = parts[5],
+                            NotebookName = parts[6],
+                            NotebookColor = parts[7],
+                            SectionGroupName = parts[8],
+                            SectionName = parts[9],
+                            SectionColor = parts[10],
+                            PageName = parts[11],
+                            ParaContent = parts[12],
+                            Notes = parts[13],
+                            IsExpanded = parts[14] == "1",
+                            SortOrder = (parts.Length >= 16 && int.TryParse(parts[15], out var so)) ? so : 0
+                        };
 
-                    items.Add(item);
+                        items.Add(item);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error loading bookmarks: " + ex.Message);
                 }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error loading bookmarks: " + ex.Message);
-            }
+
         }
         private void SaveToFile()
         {
-            try
+            using (MethodTimerLog.Time("SaveToFile"))
             {
-                var lines = items.Select(i => string.Join(",", new[]{
+                try
+                {
+                    var lines = items.Select(i => string.Join(",", new[]{
                     EscapeCsv(i.Type),
                     EscapeCsv(i.Scope ?? ""),
                     EscapeCsv(i.Id),
@@ -828,12 +840,14 @@ namespace CSOneNoteRibbonAddIn
                     i.IsExpanded ? "1" : "0",
                     i.SortOrder.ToString()
                 })).ToList();
-                File.WriteAllLines(tablePath, lines);
+                    File.WriteAllLines(tablePath, lines);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error saving bookmarks: " + ex.Message);
+                }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error saving bookmarks: " + ex.Message);
-            }
+            
         }
         private string EscapeCsv(string input)
         {
@@ -847,130 +861,131 @@ namespace CSOneNoteRibbonAddIn
         #region HELPERS
         public AddInModel GetCurrentNotebookModel(OneNote.Application oneNoteApp)
         {
-            var model = new AddInModel();
-
-            try
+            using (MethodTimerLog.Time("GetCurrentNotebookModel"))
             {
-                // Get the entire hierarchy with pages
-                string hierarchyXml;
-                oneNoteApp.GetHierarchy("", OneNote.HierarchyScope.hsPages, out hierarchyXml);
-
-                var doc = new System.Xml.XmlDocument();
-                doc.LoadXml(hierarchyXml);
-
-                var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
-                nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
-
-                // Get current page id
-                var window = oneNoteApp.Windows.CurrentWindow;
-                string currentPageId = window.CurrentPageId;
-
-                // Find current page node
-                var pageNode = doc.SelectSingleNode($"//one:Page[@ID='{currentPageId}']", nsmgr);
-                if (pageNode == null)
-                    return null; // current page not found
-
-                // Get current section node (parent of page)
-                var sectionNode = pageNode.ParentNode;
-                if (sectionNode == null || sectionNode.Name != "one:Section")
-                    return null;
-
-                // Get current notebook node (ancestor notebook)
-                var notebookNode = sectionNode.ParentNode;
-
-                // If section is inside SectionGroup, parent is SectionGroup, notebook is one level above
-                SectionGroupModel sectionGroupModel = null;
-                if (notebookNode.Name == "one:SectionGroup")
+                var model = new AddInModel();
+                try
                 {
-                    var sectionGroupNode = notebookNode;
-                    notebookNode = sectionGroupNode.ParentNode;
+                    // Get current page ID from active OneNote window
+                    var window = oneNoteApp.Windows.CurrentWindow;
+                    string currentPageId = window.CurrentPageId;
+                    if (string.IsNullOrEmpty(currentPageId))
+                        return null;
 
-                    sectionGroupModel = new SectionGroupModel
+                    // Get only the current page XML (no full hierarchy)
+                    string pageXml;
+                    oneNoteApp.GetPageContent(currentPageId, out pageXml, OneNote.PageInfo.piBasic);
+
+                    var doc = new XmlDocument();
+                    doc.LoadXml(pageXml);
+
+                    var nsmgr = new XmlNamespaceManager(doc.NameTable);
+                    nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
+
+                    // Current page node
+                    var pageNode = doc.SelectSingleNode("//one:Page", nsmgr);
+                    if (pageNode == null)
+                        return null;
+
+                    // Build current page model
+                    var pageModel = new PageModel
                     {
-                        Id = sectionGroupNode.Attributes["ID"]?.Value,
-                        Name = sectionGroupNode.Attributes["name"]?.Value,
+                        Id = pageNode.Attributes?["ID"]?.Value,
+                        Name = pageNode.Attributes?["name"]?.Value
                     };
 
-                    model.SectionGroup = sectionGroupModel;
+                    // Optionally load paragraphs/text inside page
+                    LoadParagraphs(oneNoteApp, pageModel);
+                    model.Page = pageModel;
+
+                    // Section node (page’s direct parent)
+                    var sectionNode = pageNode.ParentNode;
+                    if (sectionNode == null || sectionNode.Name != "one:Section")
+                        return model; // stop if we can't find section
+
+                    var sectionModel = new SectionModel
+                    {
+                        Id = sectionNode.Attributes?["ID"]?.Value,
+                        Name = sectionNode.Attributes?["name"]?.Value,
+                        Color = sectionNode.Attributes?["color"]?.Value
+                    };
+                    model.Section = sectionModel;
+
+                    // Check if section belongs to SectionGroup
+                    var parentNode = sectionNode.ParentNode;
+                    if (parentNode != null && parentNode.Name == "one:SectionGroup")
+                    {
+                        model.SectionGroup = new SectionGroupModel
+                        {
+                            Id = parentNode.Attributes?["ID"]?.Value,
+                            Name = parentNode.Attributes?["name"]?.Value
+                        };
+
+                        // Notebook is above SectionGroup
+                        parentNode = parentNode.ParentNode;
+                    }
+
+                    // Notebook details
+                    if (parentNode != null && parentNode.Name == "one:Notebook")
+                    {
+                        model.NotebookId = parentNode.Attributes?["ID"]?.Value;
+                        model.NotebookName = parentNode.Attributes?["name"]?.Value;
+                        model.NotebookColor = parentNode.Attributes?["color"]?.Value;
+                    }
+                   
+                    return model;
                 }
-
-                if (notebookNode == null || notebookNode.Name != "one:Notebook")
-                    return null;
-
-                // Fill notebook info
-                model.NotebookId = notebookNode.Attributes["ID"]?.Value;
-                model.NotebookName = notebookNode.Attributes["name"]?.Value;
-                model.NotebookColor = notebookNode.Attributes["color"]?.Value;
-
-                // Fill current section info
-                var sectionModel = new SectionModel
+                catch (Exception ex)
                 {
-                    Id = sectionNode.Attributes["ID"]?.Value,
-                    Name = sectionNode.Attributes["name"]?.Value,
-                    Color = sectionNode.Attributes["color"]?.Value
-                };
-                model.Section = sectionModel;
-
-                // Fill current page info
-                var pageModel = new PageModel
-                {
-                    Id = pageNode.Attributes["ID"]?.Value,
-                    Name = pageNode.Attributes["name"]?.Value
-                };
-
-                LoadParagraphs(oneNoteApp, pageModel); // load paragraphs into current page
-                model.Page = pageModel;
+                    MessageBox.Show($"Error loading OneNote info: {ex.Message}", "Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    throw;
+                }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading OneNote hierarchy: {ex.Message}", "Error", MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
-                throw;
-            }
-
-            return model;
         }
         private void LoadParagraphs(OneNote.Application oneNoteApp, PageModel page)
         {
-            try
+            using (MethodTimerLog.Time("LoadParagraphs"))
             {
-                string pageXml;
-                oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
-
-                var doc = new System.Xml.XmlDocument();
-                doc.LoadXml(pageXml);
-
-                var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
-                nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
-
-                // Select all paragraphs inside page content (Text elements inside Outline > OEChildren > OE)
-                // This XPath targets the text content inside paragraph nodes
-                var paragraphNodes = doc.SelectNodes("//one:Outline/one:OEChildren/one:OE/one:T", nsmgr);
-                if (paragraphNodes != null)
+                try
                 {
-                    int index = 1;
-                    foreach (System.Xml.XmlNode paraNode in paragraphNodes)
+                    string pageXml;
+                    oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
+
+                    var doc = new System.Xml.XmlDocument();
+                    doc.LoadXml(pageXml);
+
+                    var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
+                    nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
+
+                    // First try: get the paragraph that was last selected
+                    var selectedParaNode = doc.SelectSingleNode("//one:OE[@selected]/one:T", nsmgr);
+
+                    // Fallback: if nothing selected, take the first paragraph
+                    if (selectedParaNode == null)
                     {
-                        string paraText = paraNode.InnerText?.Trim();
+                        selectedParaNode = doc.SelectSingleNode("//one:Outline/one:OEChildren/one:OE/one:T", nsmgr);
+                    }
+
+                    if (selectedParaNode != null)
+                    {
+                        string paraText = selectedParaNode.InnerText?.Trim();
                         if (!string.IsNullOrEmpty(paraText))
                         {
                             page.Paragraphs.Add(new ParagraphModel
                             {
-                                // There is no ID on text nodes, so an index based Id or other unique ID can be used here
-                                Id = page.Id + "_para_" + index,
+                                Id = page.Id + "_selected",
                                 Name = paraText
                             });
-                            index++;
                         }
-                        break;
-
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                throw;
-            }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    throw;
+                }
+            } 
         }
         private List<BookmarkItem> FlattenForDisplay(string parentId, int depth)
         {
@@ -1105,11 +1120,19 @@ namespace CSOneNoteRibbonAddIn
 
                 string clickedColumn = grid.Columns[e.ColumnIndex].Name;
 
-                if (clickedColumn == "Name" && item.Type == "Folder")
+                if (clickedColumn == "Name")
                 {
-                    item.IsExpanded = !item.IsExpanded;
-                    SaveToFile();
-                    RefreshGridDisplay(cachedList ?? null);
+                    if (item.Type == "Folder")
+                    {
+                        // toggle expand/collapse
+                        item.IsExpanded = !item.IsExpanded;
+                        SaveToFile();
+                        RefreshGridDisplay(cachedList ?? null);
+                    }
+
+                    // stop DataGridView from putting cell into edit mode
+                    grid.EndEdit();
+                    grid.ClearSelection();
                 }
             }
             catch (Exception ex)
@@ -1471,116 +1494,120 @@ namespace CSOneNoteRibbonAddIn
         }
         private void RefreshGridDisplay(List<BookmarkItem> flatList = null)
         {
-            try
+            using (MethodTimerLog.Time("RefreshGridDisplay"))
             {
-                grid.Columns.Clear();
-                grid.Rows.Clear();
-
-                // Setup columns without a separate image column
-                grid.Columns.Add("Type", "Type");
-                grid.Columns.Add("Scope", "Scope");
-                grid.Columns.Add("Name", "Name"); // This will display image + text
-                grid.Columns.Add("Id", "Id");
-                grid.Columns.Add("OriginalId", "OriginalId");
-                grid.Columns.Add("NotebookName", "Notebook Name");
-                grid.Columns.Add("NotebookColor", "Notebook Color");
-                grid.Columns.Add("SectionGroupName", "Section Group");
-                grid.Columns.Add("SectionName", "Section Name");
-                grid.Columns.Add("SectionColor", "Section Color");
-                grid.Columns.Add("PageName", "Page Name");
-                grid.Columns.Add("ParaContent", "Paragraph Content");
-                grid.Columns.Add("BookMarkPath", "BookMark Path");
-                grid.Columns.Add("Notes", "Notes");
-                grid.Columns.Add("Depth", "Depth");
-
-                // Set visibility to false for some columns as before
-                grid.Columns["Type"].Visible = false;
-                grid.Columns["Scope"].Visible = false;
-                grid.Columns["Id"].Visible = false;
-                grid.Columns["NotebookName"].Visible = false;
-                grid.Columns["NotebookColor"].Visible = false;
-                grid.Columns["SectionGroupName"].Visible = false;
-                grid.Columns["SectionName"].Visible = false;
-                grid.Columns["SectionColor"].Visible = false;
-                grid.Columns["ParaContent"].Visible = false;
-                grid.Columns["PageName"].Visible = false;
-                grid.Columns["Depth"].Visible = false;
-                grid.Columns["OriginalId"].Visible = false;
-                grid.Columns["Notes"].ReadOnly = false;
-                grid.Columns["Name"].ReadOnly = false;
-
-                // Event subscriptions and style settings
-                grid.KeyDown += Grid_KeyDown;
-                grid.BackgroundColor = ColorTranslator.FromHtml("#f3f3f3");
-                grid.BorderStyle = BorderStyle.None;
-                grid.DefaultCellStyle.Font = new Font("Segoe UI", 10);
-                grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-                grid.DefaultCellStyle.SelectionBackColor = ColorTranslator.FromHtml("#ddd9ec");
-                grid.DefaultCellStyle.SelectionForeColor = Color.Black;
-
-                grid.Columns["BookMarkPath"].SortMode = DataGridViewColumnSortMode.NotSortable;
-                grid.Columns["Notes"].SortMode = DataGridViewColumnSortMode.NotSortable;
-                if (grid.Columns.Contains("Name"))
-                    grid.Columns["Name"].SortMode = DataGridViewColumnSortMode.NotSortable;
-
-                // Set row height based on font size plus padding
-                int fontHeight = grid.DefaultCellStyle.Font.Height;
-                grid.RowTemplate.Height = fontHeight + 6; // Padding for aesthetics and image
-
-                // Subscribe to CellPainting to draw image + text in "Name" column
-                grid.CellPainting -= Grid_CellPainting; // Avoid duplicate subscriptions
-                grid.CellPainting += Grid_CellPainting;
-                grid.ScrollBars = ScrollBars.Both;
-
-                if (flatList == null)
-                    flatList = FlattenForDisplay(null, 0);
-
-                foreach (var item in flatList)
+                try
                 {
-                    int depth = GetDepth(item);
-                    string bookmarkPath = item.NotebookName;
-                    if (!string.IsNullOrWhiteSpace(item.SectionGroupName))
-                        bookmarkPath += " - " + item.SectionGroupName;
-                    bookmarkPath += " - " + item.SectionName + " - " + item.PageName;
-                    string displayName = item.Name;
+                    grid.Columns.Clear();
+                    grid.Rows.Clear();
 
-                    // Add the row with "Name" cell value set to displayName (image will be drawn by CellPainting)
-                    int rowIndex = grid.Rows.Add(
-                        item.Type,
-                        item.Scope,
-                        displayName, // Name column value
-                        item.Id,
-                        item.OriginalId,
-                        item.NotebookName,
-                        item.NotebookColor,
-                        item.SectionGroupName,
-                        item.SectionName,
-                        item.SectionColor,
-                        item.PageName,
-                        item.ParaContent,
-                        bookmarkPath,
-                        item.Notes ?? string.Empty,
-                        depth
-                    );
+                    // Setup columns without a separate image column
+                    grid.Columns.Add("Type", "Type");
+                    grid.Columns.Add("Scope", "Scope");
+                    grid.Columns.Add("Name", "Name"); // This will display image + text
+                    grid.Columns.Add("Id", "Id");
+                    grid.Columns.Add("OriginalId", "OriginalId");
+                    grid.Columns.Add("NotebookName", "Notebook Name");
+                    grid.Columns.Add("NotebookColor", "Notebook Color");
+                    grid.Columns.Add("SectionGroupName", "Section Group");
+                    grid.Columns.Add("SectionName", "Section Name");
+                    grid.Columns.Add("SectionColor", "Section Color");
+                    grid.Columns.Add("PageName", "Page Name");
+                    grid.Columns.Add("ParaContent", "Paragraph Content");
+                    grid.Columns.Add("BookMarkPath", "BookMark Path");
+                    grid.Columns.Add("Notes", "Notes");
+                    grid.Columns.Add("Depth", "Depth");
 
-                    // Store the item in the row's Tag for use in CellPainting
-                    grid.Rows[rowIndex].Tag = item;
+                    // Set visibility to false for some columns as before
+                    grid.Columns["Type"].Visible = false;
+                    grid.Columns["Scope"].Visible = false;
+                    grid.Columns["Id"].Visible = false;
+                    grid.Columns["NotebookName"].Visible = false;
+                    grid.Columns["NotebookColor"].Visible = false;
+                    grid.Columns["SectionGroupName"].Visible = false;
+                    grid.Columns["SectionName"].Visible = false;
+                    grid.Columns["SectionColor"].Visible = false;
+                    grid.Columns["ParaContent"].Visible = false;
+                    grid.Columns["PageName"].Visible = false;
+                    grid.Columns["Depth"].Visible = false;
+                    grid.Columns["OriginalId"].Visible = false;
+                    grid.Columns["Notes"].ReadOnly = false;
+                    grid.Columns["Name"].ReadOnly = false;
 
-                    // Color coding for folders
-                    if (item.Type == "Folder")
+                    // Event subscriptions and style settings
+                    grid.KeyDown += Grid_KeyDown;
+                    grid.BackgroundColor = ColorTranslator.FromHtml("#f3f3f3");
+                    grid.BorderStyle = BorderStyle.None;
+                    grid.DefaultCellStyle.Font = new Font("Segoe UI", 10);
+                    grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+                    grid.DefaultCellStyle.SelectionBackColor = ColorTranslator.FromHtml("#ddd9ec");
+                    grid.DefaultCellStyle.SelectionForeColor = Color.Black;
+
+                    grid.Columns["BookMarkPath"].SortMode = DataGridViewColumnSortMode.NotSortable;
+                    grid.Columns["Notes"].SortMode = DataGridViewColumnSortMode.NotSortable;
+                    if (grid.Columns.Contains("Name"))
+                        grid.Columns["Name"].SortMode = DataGridViewColumnSortMode.NotSortable;
+
+                    // Set row height based on font size plus padding
+                    int fontHeight = grid.DefaultCellStyle.Font.Height;
+                    grid.RowTemplate.Height = fontHeight + 6; // Padding for aesthetics and image
+
+                    // Subscribe to CellPainting to draw image + text in "Name" column
+                    grid.CellPainting -= Grid_CellPainting; // Avoid duplicate subscriptions
+                    grid.CellPainting += Grid_CellPainting;
+                    grid.ScrollBars = ScrollBars.Both;
+
+                    if (flatList == null)
+                        flatList = FlattenForDisplay(null, 0);
+
+                    foreach (var item in flatList)
                     {
-                        grid.Rows[rowIndex].DefaultCellStyle.ForeColor = Color.DarkBlue;
-                        if (!item.IsExpanded) // collapsed folder
+                        int depth = GetDepth(item);
+                        string bookmarkPath = item.NotebookName;
+                        if (!string.IsNullOrWhiteSpace(item.SectionGroupName))
+                            bookmarkPath += " - " + item.SectionGroupName;
+                        bookmarkPath += " - " + item.SectionName + " - " + item.PageName;
+                        string displayName = item.Name;
+
+                        // Add the row with "Name" cell value set to displayName (image will be drawn by CellPainting)
+                        int rowIndex = grid.Rows.Add(
+                            item.Type,
+                            item.Scope,
+                            displayName, // Name column value
+                            item.Id,
+                            item.OriginalId,
+                            item.NotebookName,
+                            item.NotebookColor,
+                            item.SectionGroupName,
+                            item.SectionName,
+                            item.SectionColor,
+                            item.PageName,
+                            item.ParaContent,
+                            bookmarkPath,
+                            item.Notes ?? string.Empty,
+                            depth
+                        );
+
+                        // Store the item in the row's Tag for use in CellPainting
+                        grid.Rows[rowIndex].Tag = item;
+
+                        // Color coding for folders
+                        if (item.Type == "Folder")
                         {
-                            grid.Rows[rowIndex].DefaultCellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+                            grid.Rows[rowIndex].DefaultCellStyle.ForeColor = Color.DarkBlue;
+                            if (!item.IsExpanded) // collapsed folder
+                            {
+                                grid.Rows[rowIndex].DefaultCellStyle.Font = new Font(grid.Font, FontStyle.Bold);
+                            }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error in RefreshGridDisplay: {ex.Message}");
+                }
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error in RefreshGridDisplay: {ex.Message}");
-            }
+            
         }
         #endregion
         
@@ -1938,7 +1965,86 @@ namespace CSOneNoteRibbonAddIn
                 BookmarkName = string.IsNullOrWhiteSpace(txtName.Text) ? BookmarkUrl : txtName.Text.Trim();
             }
         }
+        public static class MethodTimerLog
+        {
+            private static readonly List<string> Logs = new List<string>();
+            private static readonly object LockObj = new object();
 
+            public static IDisposable Time(string methodName)
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                return new DisposableAction(() =>
+                {
+                    sw.Stop();
+                    string logEntry = $"{DateTime.Now:HH:mm:ss} {methodName} took {sw.ElapsedMilliseconds}ms";
+                    lock (LockObj)
+                    {
+                        Logs.Add(logEntry);
+                    }
+                });
+            }
 
+            public static List<string> GetLogs()
+            {
+                lock (LockObj)
+                {
+                    return new List<string>(Logs);
+                }
+            }
+
+            public static void ClearLogs()
+            {
+                lock (LockObj)
+                {
+                    Logs.Clear();
+                }
+            }
+
+            private class DisposableAction : IDisposable
+            {
+                private readonly Action _onDispose;
+                public DisposableAction(Action onDispose) => _onDispose = onDispose;
+                public void Dispose() => _onDispose?.Invoke();
+            }
+        }
+        public class MethodLogWindow : Form
+        {
+            private ListBox logsListBox;
+            private Button btnClear;
+
+            public MethodLogWindow()
+            {
+                this.Text = "Method Time Logs";
+                this.Width = 400;
+                this.Height = 350;
+
+                logsListBox = new ListBox()
+                {
+                    Dock = DockStyle.Top,
+                    Height = 270
+                };
+                btnClear = new Button()
+                {
+                    Text = "Clear Logs",
+                    Dock = DockStyle.Bottom
+                };
+                btnClear.Click += (s, e) =>
+                {
+                    MethodTimerLog.ClearLogs();
+                    RefreshLogs();
+                };
+
+                Controls.Add(logsListBox);
+                Controls.Add(btnClear);
+                RefreshLogs();
+            }
+
+            private void RefreshLogs()
+            {
+                logsListBox.Items.Clear();
+                foreach (var log in MethodTimerLog.GetLogs())
+                    logsListBox.Items.Add(log);
+            }
+        }
     }
 }

@@ -27,7 +27,6 @@ namespace CSOneNoteRibbonAddIn
     using System.Runtime.InteropServices;
     using System.Threading;
     using System.Windows.Forms;
-    using System.Xml;
     using OneNote = Microsoft.Office.Interop.OneNote;
     
     #endregion
