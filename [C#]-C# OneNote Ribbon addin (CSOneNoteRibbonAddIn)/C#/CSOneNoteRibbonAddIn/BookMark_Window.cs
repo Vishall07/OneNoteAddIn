@@ -135,6 +135,8 @@ namespace CSOneNoteRibbonAddIn
                 contextMenu.Items.Add("Export All Bookmarks", null, Export_All_Bookmarks_Click);
                 contextMenu.Items.Add("Settings", null, Settings_Click);
                 contextMenu.Items.Add("Show Method Time Logs", null, ShowMethodLogs_Click);
+                contextMenu.Items.Add("Fill in path", null, FillInPath_Click);
+                contextMenu.Items.Add("Fill in all missing paths", null, FillInAllMissingPaths_Click);
 
                 //Controls.Add(btnDelete);
                 Controls.Add(grid);
@@ -174,7 +176,6 @@ namespace CSOneNoteRibbonAddIn
                 MessageBox.Show("Error initializing Bookmark window: " + ex.Message);
             }
         }
-
         public void UpdateBookmarkInfo(
     string newSelectedId,
     string newSelectedScope,
@@ -558,6 +559,146 @@ namespace CSOneNoteRibbonAddIn
         }
         #endregion
 
+        #region Fill Path Handlers
+        private (string notebookName, string sectionGroupName, string sectionName, string pageName) GetPathFromOriginalId(OneNote.Application oneNoteApp, string pageId, string hierarchyXml)
+        {
+            try
+            {
+                var doc = new System.Xml.XmlDocument();
+                doc.LoadXml(hierarchyXml);
+
+                var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
+                nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
+
+                var pageNode = doc.SelectSingleNode($"//one:Page[@ID='{pageId}']", nsmgr);
+                if (pageNode == null) return (null, null, null, null);
+
+                // Section node (parent of page)
+                var sectionNode = pageNode.ParentNode;
+                if (sectionNode == null || sectionNode.Name != "one:Section") return (null, null, null, null);
+
+                // Notebook or SectionGroup node (parent of section)
+                var notebookNode = sectionNode.ParentNode;
+                SectionGroupModel sectionGroupModel = null;
+                string sectionGroupName = null;
+
+                if (notebookNode != null && notebookNode.Name == "one:SectionGroup")
+                {
+                    var sectionGroupNode = notebookNode;
+                    notebookNode = sectionGroupNode.ParentNode;
+
+                    sectionGroupName = sectionGroupNode.Attributes["name"]?.Value;
+                }
+
+                if (notebookNode == null || notebookNode.Name != "one:Notebook") return (null, null, null, null);
+
+                string notebookName = notebookNode.Attributes["name"]?.Value;
+                string sectionName = sectionNode.Attributes["name"]?.Value;
+                string pageName = pageNode.Attributes["name"]?.Value;
+
+                return (notebookName, sectionGroupName, sectionName, pageName);
+            }
+            catch
+            {
+                // Handle exceptions or return null infos
+                return (null, null, null, null);
+            }
+        }
+        private void FillInPath_Click(object sender, EventArgs e)
+        {
+            using (MethodTimerLog.Time("FillInPath_Click"))
+            {
+                var selectedRow = grid.SelectedRows.Count > 0 ? grid.SelectedRows[0] : null;
+                if (selectedRow == null)
+                {
+                    MessageBox.Show("Please select a row to fill in path.");
+                    return;
+                }
+
+                string id = selectedRow.Cells["Id"].Value?.ToString();
+                if (string.IsNullOrEmpty(id))
+                {
+                    MessageBox.Show("Selected row has invalid ID.");
+                    return;
+                }
+
+                var item = items.FirstOrDefault(b => b.Id == id);
+                if (item == null)
+                {
+                    MessageBox.Show("Selected bookmark not found.");
+                    return;
+                }
+
+                var oneNoteApp = new OneNote.Application();
+                string hierarchyXml;
+                oneNoteApp.GetHierarchy("", OneNote.HierarchyScope.hsPages, out hierarchyXml);
+                var (notebookName, sectionGroupName, sectionName, pageName) = GetPathFromOriginalId(oneNoteApp, item.OriginalId, hierarchyXml);
+
+                if (notebookName == null)
+                {
+                    MessageBox.Show("Could not find OneNote hierarchy for this item.");
+                    return;
+                }
+
+                // Update bookmark with new path info
+                item.NotebookName = notebookName;
+                item.SectionGroupName = sectionGroupName;
+                item.SectionName = sectionName;
+                item.PageName = pageName;
+
+                SaveToFile();
+                cachedList = null;
+                RefreshGridDisplay();
+            }
+
+               
+        }
+        private void FillInAllMissingPaths_Click(object sender, EventArgs e)
+        {
+            using (MethodTimerLog.Time("FillInAllMissingPaths_Click"))
+            {
+                var oneNoteApp = new OneNote.Application();
+                int updatedCount = 0;
+                string hierarchyXml;
+                oneNoteApp.GetHierarchy("", OneNote.HierarchyScope.hsPages, out hierarchyXml);
+                foreach (var item in items)
+                {
+                    // Check if path information is missing or empty
+                    bool isPathMissing = string.IsNullOrWhiteSpace(item.NotebookName) ||
+                                         string.IsNullOrWhiteSpace(item.SectionName) ||
+                                         string.IsNullOrWhiteSpace(item.PageName);
+
+                    if (isPathMissing && !string.IsNullOrEmpty(item.OriginalId))
+                    {
+                        var (notebookName, sectionGroupName, sectionName, pageName) = GetPathFromOriginalId(oneNoteApp, item.OriginalId, hierarchyXml);
+
+                        if (notebookName != null) // valid path found
+                        {
+                            item.NotebookName = notebookName;
+                            item.SectionGroupName = sectionGroupName;
+                            item.SectionName = sectionName;
+                            item.PageName = pageName;
+                            updatedCount++;
+                        }
+                    }
+                }
+
+                if (updatedCount > 0)
+                {
+                    SaveToFile();
+                    cachedList = null;
+                    RefreshGridDisplay();
+                    MessageBox.Show($"Updated paths for {updatedCount} bookmarks.", "Fill In All Missing Paths");
+                }
+                else
+                {
+                    MessageBox.Show("All bookmarks already have path information filled.");
+                }
+            }
+                
+        }
+        #endregion
+
         #region List Scope Handlers
         private void Grid_CellClick(object sender, DataGridViewCellEventArgs e)
         {
@@ -584,6 +725,7 @@ namespace CSOneNoteRibbonAddIn
                                 FileName = item.OriginalId,
                                 UseShellExecute = true
                             });
+                            this.Hide();
                         }
                         catch (Exception ex)
                         {
@@ -606,12 +748,19 @@ namespace CSOneNoteRibbonAddIn
                         app.NavigateTo(item.OriginalId);
                         // Optionally, to open in a new window:
                         // app.NavigateTo(id, "", true);
+                        this.Hide();
                     }
                     catch (Exception exNav)
                     {
                         MessageBox.Show("Failed to open OneNote object: " + exNav.Message);
                     }
 
+                }
+                else if (clickedColumn == "Name" && item.Type == "Folder")
+                {
+                    item.IsExpanded = !item.IsExpanded;
+                    SaveToFile();
+                    RefreshGridDisplay(cachedList ?? null);
                 }
                 else if (clickedColumn == "Notes")
                 {
@@ -705,9 +854,7 @@ namespace CSOneNoteRibbonAddIn
                     Notes = ""
                 };
 
-                // No RemoveAll here → allow duplicates
-                items.Add(newBookmark);
-
+                items.Insert(0, newBookmark);
                 SaveToFile();
                 cachedList = null;
                 RefreshGridDisplay();
@@ -864,6 +1011,7 @@ namespace CSOneNoteRibbonAddIn
             using (MethodTimerLog.Time("GetCurrentNotebookModel"))
             {
                 var model = new AddInModel();
+
                 try
                 {
                     // Get current page ID from active OneNote window
@@ -932,7 +1080,7 @@ namespace CSOneNoteRibbonAddIn
                         model.NotebookName = parentNode.Attributes?["name"]?.Value;
                         model.NotebookColor = parentNode.Attributes?["color"]?.Value;
                     }
-                   
+
                     return model;
                 }
                 catch (Exception ex)
@@ -943,49 +1091,47 @@ namespace CSOneNoteRibbonAddIn
                 }
             }
         }
+
         private void LoadParagraphs(OneNote.Application oneNoteApp, PageModel page)
         {
-            using (MethodTimerLog.Time("LoadParagraphs"))
+            try
             {
-                try
+                string pageXml;
+                oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
+
+                var doc = new System.Xml.XmlDocument();
+                doc.LoadXml(pageXml);
+
+                var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
+                nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
+
+                // First try: get the paragraph that was last selected
+                var selectedParaNode = doc.SelectSingleNode("//one:OE[@selected]/one:T", nsmgr);
+
+                // Fallback: if nothing selected, take the first paragraph
+                if (selectedParaNode == null)
                 {
-                    string pageXml;
-                    oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
+                    selectedParaNode = doc.SelectSingleNode("//one:Outline/one:OEChildren/one:OE/one:T", nsmgr);
+                }
 
-                    var doc = new System.Xml.XmlDocument();
-                    doc.LoadXml(pageXml);
-
-                    var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
-                    nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
-
-                    // First try: get the paragraph that was last selected
-                    var selectedParaNode = doc.SelectSingleNode("//one:OE[@selected]/one:T", nsmgr);
-
-                    // Fallback: if nothing selected, take the first paragraph
-                    if (selectedParaNode == null)
+                if (selectedParaNode != null)
+                {
+                    string paraText = selectedParaNode.InnerText?.Trim();
+                    if (!string.IsNullOrEmpty(paraText))
                     {
-                        selectedParaNode = doc.SelectSingleNode("//one:Outline/one:OEChildren/one:OE/one:T", nsmgr);
-                    }
-
-                    if (selectedParaNode != null)
-                    {
-                        string paraText = selectedParaNode.InnerText?.Trim();
-                        if (!string.IsNullOrEmpty(paraText))
+                        page.Paragraphs.Add(new ParagraphModel
                         {
-                            page.Paragraphs.Add(new ParagraphModel
-                            {
-                                Id = page.Id + "_selected",
-                                Name = paraText
-                            });
-                        }
+                            Id = page.Id + "_selected",
+                            Name = paraText
+                        });
                     }
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    throw;
-                }
-            } 
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw;
+            }
         }
         private List<BookmarkItem> FlattenForDisplay(string parentId, int depth)
         {
@@ -1122,17 +1268,13 @@ namespace CSOneNoteRibbonAddIn
 
                 if (clickedColumn == "Name")
                 {
-                    if (item.Type == "Folder")
-                    {
-                        // toggle expand/collapse
-                        item.IsExpanded = !item.IsExpanded;
-                        SaveToFile();
-                        RefreshGridDisplay(cachedList ?? null);
-                    }
-
-                    // stop DataGridView from putting cell into edit mode
-                    grid.EndEdit();
-                    grid.ClearSelection();
+                    grid.Rows[e.RowIndex].Cells["Name"].ReadOnly = false;
+                    grid.BeginEdit(true);
+                }
+                else if (clickedColumn == "Notes")
+                {
+                    grid.Rows[e.RowIndex].Cells["Notes"].ReadOnly = false;
+                    grid.BeginEdit(true);
                 }
             }
             catch (Exception ex)
@@ -1639,7 +1781,8 @@ namespace CSOneNoteRibbonAddIn
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            ApplyRoundedCorners(8);
+            //ApplyRoundedCorners(8);
+
         }
         protected override void WndProc(ref Message m)
         {

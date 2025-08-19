@@ -27,6 +27,7 @@ namespace CSOneNoteRibbonAddIn
     using System.Runtime.InteropServices;
     using System.Threading;
     using System.Windows.Forms;
+    using static CSOneNoteRibbonAddIn.BookMark_Window;
     using OneNote = Microsoft.Office.Interop.OneNote;
     
     #endregion
@@ -342,7 +343,7 @@ namespace CSOneNoteRibbonAddIn
                 // Get current page id
                 var window = oneNoteApp.Windows.CurrentWindow;
                 string currentPageId = window.CurrentPageId;
-               
+
                 // Find current page node
                 var pageNode = doc.SelectSingleNode($"//one:Page[@ID='{currentPageId}']", nsmgr);
                 if (pageNode == null)
@@ -407,53 +408,51 @@ namespace CSOneNoteRibbonAddIn
 
             return model;
         }
-
         private void LoadParagraphs(OneNote.Application oneNoteApp, PageModel page)
         {
-            try
+            using (MethodTimerLog.Time("LoadParagraphs"))
             {
-                string pageXml;
-                oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
-
-                var doc = new System.Xml.XmlDocument();
-                doc.LoadXml(pageXml);
-
-                var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
-                nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
-
-                // Select all paragraphs inside page content (Text elements inside Outline > OEChildren > OE)
-                // This XPath targets the text content inside paragraph nodes
-                var paragraphNodes = doc.SelectNodes("//one:Outline/one:OEChildren/one:OE/one:T", nsmgr);
-                if (paragraphNodes != null)
+                try
                 {
-                    int index = 1;
-                    foreach (System.Xml.XmlNode paraNode in paragraphNodes)
+                    string pageXml;
+                    oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
+
+                    var doc = new System.Xml.XmlDocument();
+                    doc.LoadXml(pageXml);
+
+                    var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
+                    nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
+
+                    // First try: get the paragraph that was last selected
+                    var selectedParaNode = doc.SelectSingleNode("//one:OE[@selected]/one:T", nsmgr);
+
+                    // Fallback: if nothing selected, take the first paragraph
+                    if (selectedParaNode == null)
                     {
-                        string paraText = paraNode.InnerText?.Trim();
+                        selectedParaNode = doc.SelectSingleNode("//one:Outline/one:OEChildren/one:OE/one:T", nsmgr);
+                    }
+
+                    if (selectedParaNode != null)
+                    {
+                        string paraText = selectedParaNode.InnerText?.Trim();
                         if (!string.IsNullOrEmpty(paraText))
                         {
                             page.Paragraphs.Add(new ParagraphModel
                             {
-                                // There is no ID on text nodes, so an index based Id or other unique ID can be used here
-                                Id = page.Id + "_para_" + index,
+                                Id = page.Id + "_selected",
                                 Name = paraText
                             });
-                            index++;
                         }
-                        break;
-
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                throw;
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    throw;
+                }
             }
         }
-
         #endregion
-
         public void InitializeWindowsForms()
         {
             System.Windows.Forms.Application.EnableVisualStyles();
