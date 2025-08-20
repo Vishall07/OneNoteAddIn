@@ -461,7 +461,7 @@ namespace CSOneNoteRibbonAddIn
         public void PositionFormNearCursor(Form form)
         {
             var desiredWidth = 600;
-            var desiredHeight = 500;
+            var desiredHeight = 400;
 
             var cursorPos = Cursor.Position;
             var screen = Screen.FromPoint(cursorPos);
@@ -583,7 +583,5 @@ namespace CSOneNoteRibbonAddIn
             GC.Collect();
         }
         #endregion
-
-
     }
 }

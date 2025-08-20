@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices; 
 using System.Text;
+using System.Web;
 using System.Windows.Forms;
 using System.Xml;
 using OneNote = Microsoft.Office.Interop.OneNote;
@@ -135,8 +136,6 @@ namespace CSOneNoteRibbonAddIn
                 contextMenu.Items.Add("Export All Bookmarks", null, Export_All_Bookmarks_Click);
                 contextMenu.Items.Add("Settings", null, Settings_Click);
                 contextMenu.Items.Add("Show Method Time Logs", null, ShowMethodLogs_Click);
-                contextMenu.Items.Add("Fill in path", null, FillInPath_Click);
-                contextMenu.Items.Add("Fill in all missing paths", null, FillInAllMissingPaths_Click);
 
                 //Controls.Add(btnDelete);
                 Controls.Add(grid);
@@ -146,11 +145,6 @@ namespace CSOneNoteRibbonAddIn
                 var textWrapMenuItem = new ToolStripMenuItem("Text Wrap This Column");
                 textWrapMenuItem.Click += TextWrapMenuItem_Click;
                 columnHeaderContextMenu.Items.Add(textWrapMenuItem);
-
-                //Controls.Add(labelNotebook);
-                //Controls.Add(labelSection);
-                //Controls.Add(labelPage);
-                //Controls.Add(labelPara);
 
                 selectedId = onenoteId;
                 selectedScope = onenoteScope;
@@ -177,72 +171,72 @@ namespace CSOneNoteRibbonAddIn
             }
         }
         public void UpdateBookmarkInfo(
-    string newSelectedId,
-    string newSelectedScope,
-    string newSelectedText,
-    string newNotebookName,
-    string newNotebookColor,
-    string newSectionGroupName,
-    string newSectionName,
-    string newSectionColor,
-    string newPageName,
-    string newParaContent)
-        {
-            selectedId = newSelectedId;
-            selectedScope = newSelectedScope;
-            selectedText = newSelectedText;
+            string newSelectedId,
+            string newSelectedScope,
+            string newSelectedText,
+            string newNotebookName,
+            string newNotebookColor,
+            string newSectionGroupName,
+            string newSectionName,
+            string newSectionColor,
+            string newPageName,
+            string newParaContent)
+                {
+                    selectedId = newSelectedId;
+                    selectedScope = newSelectedScope;
+                    selectedText = newSelectedText;
 
-            notebookName = newNotebookName;
-            notebookColor = newNotebookColor;
-            sectionGroupName = newSectionGroupName;
-            sectionName = newSectionName;
-            sectionColor = newSectionColor;
-            pageName = newPageName;
-            paraContent = newParaContent;
+                    notebookName = newNotebookName;
+                    notebookColor = newNotebookColor;
+                    sectionGroupName = newSectionGroupName;
+                    sectionName = newSectionName;
+                    sectionColor = newSectionColor;
+                    pageName = newPageName;
+                    paraContent = newParaContent;
 
-            if (label != null)
-            {
-                label.Text = selectedText ?? "No Selection";
-            }
+                    if (label != null)
+                    {
+                        label.Text = selectedText ?? "No Selection";
+                    }
 
-            if (comboScope != null)
-            {
-                int index = comboScope.FindStringExact(selectedScope);
-                comboScope.SelectedIndex = (index >= 0) ? index : -1;
-            }
+                    if (comboScope != null)
+                    {
+                        int index = comboScope.FindStringExact(selectedScope);
+                        comboScope.SelectedIndex = (index >= 0) ? index : -1;
+                    }
 
-            if (labelNotebook != null)
-            {
-                labelNotebook.Text = $"Notebook: {notebookName ?? "N/A"} [{notebookColor ?? "No Color"}]";
-            }
-            if (labelSection != null)
-            {
-                labelSection.Text = $"Section: {sectionName ?? "N/A"} [{sectionColor ?? "No Color"}] | Group: {sectionGroupName ?? "N/A"}";
-            }
-            if (labelPage != null)
-            {
-                labelPage.Text = $"Page: {pageName ?? "N/A"}";
-            }
-            if (labelPara != null)
-            {
-                labelPara.Text = $"Paragraph: {paraContent ?? "N/A"}";
-            }
+                    if (labelNotebook != null)
+                    {
+                        labelNotebook.Text = $"Notebook: {notebookName ?? "N/A"} [{notebookColor ?? "No Color"}]";
+                    }
+                    if (labelSection != null)
+                    {
+                        labelSection.Text = $"Section: {sectionName ?? "N/A"} [{sectionColor ?? "No Color"}] | Group: {sectionGroupName ?? "N/A"}";
+                    }
+                    if (labelPage != null)
+                    {
+                        labelPage.Text = $"Page: {pageName ?? "N/A"}";
+                    }
+                    if (labelPara != null)
+                    {
+                        labelPara.Text = $"Paragraph: {paraContent ?? "N/A"}";
+                    }
 
-            // Decide what list to show:
-            if (cachedList == null)
-                RefreshGridDisplay();
-            else
-                RefreshGridDisplay(cachedList);
+                    // Decide what list to show:
+                    if (cachedList == null)
+                        RefreshGridDisplay();
+                    else
+                        RefreshGridDisplay(cachedList);
 
-            if (btnSave != null)
-            {
-                btnSave.Enabled = !string.IsNullOrEmpty(selectedId);
-            }
-            if (btnDelete != null)
-            {
-                btnDelete.Enabled = grid.SelectedRows.Count > 0;
-            }
-        }
+                    if (btnSave != null)
+                    {
+                        btnSave.Enabled = !string.IsNullOrEmpty(selectedId);
+                    }
+                    if (btnDelete != null)
+                    {
+                        btnDelete.Enabled = grid.SelectedRows.Count > 0;
+                    }
+                }
         #endregion
 
         #region CONTEXT MENU HANDLERS   
@@ -604,99 +598,26 @@ namespace CSOneNoteRibbonAddIn
                 return (null, null, null, null);
             }
         }
-        private void FillInPath_Click(object sender, EventArgs e)
+
+        private string GetBookmarkName(string scope, string notebookName, string sectionGroupName, string sectionName, string pageName, string paraContent)
         {
-            using (MethodTimerLog.Time("FillInPath_Click"))
+            switch (scope)
             {
-                var selectedRow = grid.SelectedRows.Count > 0 ? grid.SelectedRows[0] : null;
-                if (selectedRow == null)
-                {
-                    MessageBox.Show("Please select a row to fill in path.");
-                    return;
-                }
-
-                string id = selectedRow.Cells["Id"].Value?.ToString();
-                if (string.IsNullOrEmpty(id))
-                {
-                    MessageBox.Show("Selected row has invalid ID.");
-                    return;
-                }
-
-                var item = items.FirstOrDefault(b => b.Id == id);
-                if (item == null)
-                {
-                    MessageBox.Show("Selected bookmark not found.");
-                    return;
-                }
-
-                var oneNoteApp = new OneNote.Application();
-                string hierarchyXml;
-                oneNoteApp.GetHierarchy("", OneNote.HierarchyScope.hsPages, out hierarchyXml);
-                var (notebookName, sectionGroupName, sectionName, pageName) = GetPathFromOriginalId(oneNoteApp, item.OriginalId, hierarchyXml);
-
-                if (notebookName == null)
-                {
-                    MessageBox.Show("Could not find OneNote hierarchy for this item.");
-                    return;
-                }
-
-                // Update bookmark with new path info
-                item.NotebookName = notebookName;
-                item.SectionGroupName = sectionGroupName;
-                item.SectionName = sectionName;
-                item.PageName = pageName;
-
-                SaveToFile();
-                cachedList = null;
-                RefreshGridDisplay();
+                case "Current Paragraph":
+                    return paraContent ?? "Unnamed Paragraph";
+                case "Current Page":
+                    return pageName ?? "Unnamed Page";
+                case "Current Section":
+                    return sectionName ?? "Unnamed Section";
+                case "Current Section Group":
+                    return sectionGroupName ?? "Unnamed Section Group";
+                case "Current Notebook":
+                    return notebookName ?? "Unnamed Notebook";
+                default:
+                    return "Unnamed Bookmark";
             }
-
-               
         }
-        private void FillInAllMissingPaths_Click(object sender, EventArgs e)
-        {
-            using (MethodTimerLog.Time("FillInAllMissingPaths_Click"))
-            {
-                var oneNoteApp = new OneNote.Application();
-                int updatedCount = 0;
-                string hierarchyXml;
-                oneNoteApp.GetHierarchy("", OneNote.HierarchyScope.hsPages, out hierarchyXml);
-                foreach (var item in items)
-                {
-                    // Check if path information is missing or empty
-                    bool isPathMissing = string.IsNullOrWhiteSpace(item.NotebookName) ||
-                                         string.IsNullOrWhiteSpace(item.SectionName) ||
-                                         string.IsNullOrWhiteSpace(item.PageName);
 
-                    if (isPathMissing && !string.IsNullOrEmpty(item.OriginalId))
-                    {
-                        var (notebookName, sectionGroupName, sectionName, pageName) = GetPathFromOriginalId(oneNoteApp, item.OriginalId, hierarchyXml);
-
-                        if (notebookName != null) // valid path found
-                        {
-                            item.NotebookName = notebookName;
-                            item.SectionGroupName = sectionGroupName;
-                            item.SectionName = sectionName;
-                            item.PageName = pageName;
-                            updatedCount++;
-                        }
-                    }
-                }
-
-                if (updatedCount > 0)
-                {
-                    SaveToFile();
-                    cachedList = null;
-                    RefreshGridDisplay();
-                    MessageBox.Show($"Updated paths for {updatedCount} bookmarks.", "Fill In All Missing Paths");
-                }
-                else
-                {
-                    MessageBox.Show("All bookmarks already have path information filled.");
-                }
-            }
-                
-        }
         #endregion
 
         #region List Scope Handlers
@@ -777,91 +698,112 @@ namespace CSOneNoteRibbonAddIn
         }
         private void ListScope_Click(object sender, EventArgs e)
         {
-            try
+            using (MethodTimerLog.Time("ListScope_Click"))
             {
-                var oneNoteApp = new OneNote.Application();
-                var model = GetCurrentNotebookModel(oneNoteApp);
-                if (model == null)
+                try
                 {
-                    MessageBox.Show("Failed to load the current notebook model.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
+                    var oneNoteApp = new OneNote.Application();
+                    Window currentWindow = oneNoteApp.Windows.CurrentWindow;
+
+                    // Use Onenote to get Notebook hyperlink and section hyperlink and using it get notebook name and section name
+                    string notebookId = currentWindow.CurrentNotebookId;
+                    string sectionId = currentWindow.CurrentSectionId;
+                    oneNoteApp.GetHyperlinkToObject(notebookId, null, out string notebookLink);
+                    oneNoteApp.GetHyperlinkToObject(sectionId, null, out string sectionLink);
+                    string notebookPath = notebookLink.Replace("onenote:///", "");
+                    string sectionPath = sectionLink.Replace("onenote:///", "");
+                    notebookPath = Uri.UnescapeDataString(notebookPath);
+                    sectionPath = Uri.UnescapeDataString(sectionPath);
+
+                    string notebookNames = Path.GetFileName(notebookPath);
+                    string sectionFile = Path.GetFileNameWithoutExtension(sectionPath.Split('#')[0]);
+                    var sectionParts = sectionPath.Split('#')[0].Split(Path.DirectorySeparatorChar);
+                    var groups = sectionParts.SkipWhile(p => p != notebookNames).Skip(1).Take(sectionParts.Length - 2).ToList();
+                    string sectionGroupNames = (groups.Count > 1 && groups.Any()) ? string.Join(" > ", groups[0]) : "";
+
+                    var model = GetCurrentNotebookModel(oneNoteApp);
+                    if (model == null)
+                    {
+                        MessageBox.Show("Failed to load the current notebook model.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+
+                    // Extract data from your model
+                    string selectedId = model.Page?.Id ?? "";
+                    string selectedScope = "page";
+                    string displayText = model.Page?.Name ?? "";
+                    string notebookName = notebookNames ?? "";
+                    string notebookColor = model.NotebookColor ?? "";
+                    string sectionGroupName = sectionGroupNames ?? "";
+                    string sectionName = sectionFile ?? "";
+                    string sectionColor = model.Section?.Color ?? "";
+                    string pageName = model.Page.Name ?? "";
+                    string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "";
+
+                    if (string.IsNullOrEmpty(selectedId))
+                    {
+                        MessageBox.Show("No bookmark selected to save.");
+                        return;
+                    }
+                    UpdateBookmarkInfo(
+                                selectedId, selectedScope, displayText,
+                                notebookName, notebookColor,
+                                sectionGroupName, sectionName, sectionColor,
+                                pageName, paraContent);
+
+
+                    string bookmarkName;
+                    string selected = listScope.SelectedItem.ToString();
+
+                    switch (selected)
+                    {
+                        case "Current Paragraph":
+                            bookmarkName = paraContent ?? "Unnamed Paragraph";
+                            break;
+                        case "Current Page":
+                            bookmarkName = pageName ?? "Unnamed Page";
+                            break;
+                        case "Current Section":
+                            bookmarkName = sectionName ?? "Unnamed Section";
+                            break;
+                        case "Current Section Group":
+                            bookmarkName = sectionGroupName ?? "Unnamed Section Group";
+                            break;
+                        case "Current Notebook":
+                            bookmarkName = notebookName ?? "Unnamed Notebook";
+                            break;
+                        default:
+                            bookmarkName = "Unnamed Bookmark";
+                            break;
+                    }
+
+                    var newBookmark = new BookmarkItem
+                    {
+                        Type = "Bookmark",
+                        Scope = selected,
+                        Name = bookmarkName,
+                        ParentId = null,
+                        Id = selectedId + "_" + Guid.NewGuid().ToString(), // unique composite ID
+                        OriginalId = selectedId, // store the actual OneNote ID separately
+                        NotebookName = notebookName,
+                        NotebookColor = notebookColor,
+                        SectionGroupName = sectionGroupName,
+                        SectionName = sectionName,
+                        SectionColor = sectionColor,
+                        PageName = pageName,
+                        ParaContent = paraContent,
+                        Notes = ""
+                    };
+
+                    items.Insert(0, newBookmark);
+                    SaveToFile();
+                    cachedList = null;
+                    RefreshGridDisplay();
                 }
-
-                // Extract data from your model
-                string selectedId = model.Page?.Id ?? "";
-                string selectedScope = "page";
-                string displayText = model.Page?.Name ?? "";
-                string notebookName = model.NotebookName ?? "";
-                string notebookColor = model.NotebookColor ?? "";
-                string sectionGroupName = model.SectionGroup?.Name ?? "";
-                string sectionName = model.Section?.Name ?? "";
-                string sectionColor = model.Section?.Color ?? "";
-                string pageName = model.Page?.Name ?? "";
-                string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "";
-
-                if (string.IsNullOrEmpty(selectedId))
+                catch (Exception ex)
                 {
-                    MessageBox.Show("No bookmark selected to save.");
-                    return;
+                    MessageBox.Show("Error saving: " + ex.Message);
                 }
-                UpdateBookmarkInfo(
-                            selectedId, selectedScope, displayText,
-                            notebookName, notebookColor,
-                            sectionGroupName, sectionName, sectionColor,
-                            pageName, paraContent);
-
-
-                string bookmarkName;
-                string selected = listScope.SelectedItem.ToString();
-
-                switch (selected)
-                {
-                    case "Current Paragraph":
-                        bookmarkName = paraContent ?? "Unnamed Paragraph";
-                        break;
-                    case "Current Page":
-                        bookmarkName = pageName ?? "Unnamed Page";
-                        break;
-                    case "Current Section":
-                        bookmarkName = sectionName ?? "Unnamed Section";
-                        break;
-                    case "Current Section Group":
-                        bookmarkName = sectionGroupName ?? "Unnamed Section Group";
-                        break;
-                    case "Current Notebook":
-                        bookmarkName = notebookName ?? "Unnamed Notebook";
-                        break;
-                    default:
-                        bookmarkName = "Unnamed Bookmark";
-                        break;
-                }
-
-                var newBookmark = new BookmarkItem
-                {
-                    Type = "Bookmark",
-                    Scope = selected,
-                    Name = bookmarkName,
-                    ParentId = null,
-                    Id = selectedId + "_" + Guid.NewGuid().ToString(), // unique composite ID
-                    OriginalId = selectedId, // store the actual OneNote ID separately
-                    NotebookName = notebookName,
-                    NotebookColor = notebookColor,
-                    SectionGroupName = sectionGroupName,
-                    SectionName = sectionName,
-                    SectionColor = sectionColor,
-                    PageName = pageName,
-                    ParaContent = paraContent,
-                    Notes = ""
-                };
-
-                items.Insert(0, newBookmark);
-                SaveToFile();
-                cachedList = null;
-                RefreshGridDisplay();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error saving: " + ex.Message);
             }
         }
         #endregion
@@ -1091,7 +1033,6 @@ namespace CSOneNoteRibbonAddIn
                 }
             }
         }
-
         private void LoadParagraphs(OneNote.Application oneNoteApp, PageModel page)
         {
             try
@@ -1781,7 +1722,6 @@ namespace CSOneNoteRibbonAddIn
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            //ApplyRoundedCorners(8);
 
         }
         protected override void WndProc(ref Message m)
