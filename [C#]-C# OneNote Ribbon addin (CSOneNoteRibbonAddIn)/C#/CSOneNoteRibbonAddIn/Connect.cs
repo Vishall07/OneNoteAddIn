@@ -115,6 +115,8 @@ namespace CSOneNoteRibbonAddIn
             {
                 System.Windows.Forms.MessageBox.Show("closing app");
             }
+            _uiThreadBookmark.Join(5000);
+            _uiThreadBookmark = null;
             this.applicationObject = null;
             GC.Collect();
             GC.WaitForPendingFinalizers();
@@ -254,7 +256,7 @@ namespace CSOneNoteRibbonAddIn
                             notebookName, notebookColor,
                             sectionGroupName, sectionName, sectionColor,
                             pageName, paraContent);
-
+                        PositionFormNearCursor(_bookmarkWindow);
                         _bookmarkWindow.Show();
                         _bookmarkWindow.Activate();
                         _bookmarkWindow.BringToFront();
@@ -460,38 +462,71 @@ namespace CSOneNoteRibbonAddIn
         }
         public void PositionFormNearCursor(Form form)
         {
-            var desiredWidth = 600;
-            var desiredHeight = 400;
+            const string sizeFilePath = "form_size.txt";
+            const int defaultWidth = 500;
+            const int defaultHeight = 400;
+
+            // Load size from file or use default
+            int formWidth = defaultWidth;
+            int formHeight = defaultHeight;
+
+            try
+            {
+                if (File.Exists(sizeFilePath))
+                {
+                    string sizeText = File.ReadAllText(sizeFilePath);
+                    string[] parts = sizeText.Split(',');
+
+                    if (parts.Length == 2 &&
+                        int.TryParse(parts[0].Trim(), out int width) &&
+                        int.TryParse(parts[1].Trim(), out int height) &&
+                        width > 0 && height > 0)
+                    {
+                        formWidth = width;
+                        formHeight = height;
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore errors, use defaults
+            }
 
             var cursorPos = Cursor.Position;
             var screen = Screen.FromPoint(cursorPos);
 
-            // Start with default location at cursor
             int x = cursorPos.X;
             int y = cursorPos.Y;
 
-            // Use 600x300 if it fits, otherwise keep form's existing size
-            int formWidth = desiredWidth;
-            int formHeight = desiredHeight;
-
-            // Adjust horizontal position if it overflows right side
             if (x + formWidth > screen.WorkingArea.Right)
                 x = cursorPos.X - formWidth;
 
-            // Adjust for left boundary
             if (x < screen.WorkingArea.Left)
                 x = screen.WorkingArea.Left;
 
-            // Adjust vertical position
             if (y < screen.WorkingArea.Top)
                 y = screen.WorkingArea.Top;
 
             if (y + formHeight > screen.WorkingArea.Bottom)
                 y = screen.WorkingArea.Bottom - formHeight;
 
-            // Apply size and position
             form.Size = new Size(formWidth, formHeight);
             form.Location = new Point(x, y);
+
+            // Update size file on size change (avoid multiple subscriptions)
+            form.SizeChanged -= (s, e) => { }; // dummy remove all
+            form.SizeChanged += (s, e) =>
+            {
+                try
+                {
+                    File.WriteAllText(sizeFilePath, $"{form.Width},{form.Height}");
+                }
+                catch
+                {
+                    // Ignore write errors
+                }
+            };
+
             form.Show();
         }
 

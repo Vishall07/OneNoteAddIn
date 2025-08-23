@@ -2,18 +2,16 @@
 using Microsoft.Office.Interop.OneNote;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices; 
 using System.Text;
-using System.Web;
 using System.Windows.Forms;
 using System.Xml;
 using OneNote = Microsoft.Office.Interop.OneNote;
-
-
 #endregion
 
 namespace CSOneNoteRibbonAddIn
@@ -68,11 +66,7 @@ namespace CSOneNoteRibbonAddIn
         {
             try
             {
-                // Basic window setup
-                this.FormBorderStyle = FormBorderStyle.None;
-                //this.Width = 600;
-                //this.Height = 300;
-                
+                this.FormBorderStyle = FormBorderStyle.Sizable;
                 this.BackColor = Color.White;
 
                 labelNotebook = new Label { Location = new Point(20, 30), AutoSize = true };
@@ -82,12 +76,11 @@ namespace CSOneNoteRibbonAddIn
 
                 listScope = new ListBox()
                 {
-                    Location = new Point(20, 12),
+                    Dock = DockStyle.Top,
                     Width = 140,
                     Font = new Font("Segoe UI", 10),
                     Height = 90 // Adjust as needed
                 };
-
                 // Add your scope options
                 listScope.Items.AddRange(new[]
                 {
@@ -97,13 +90,13 @@ namespace CSOneNoteRibbonAddIn
                     "Current Page",
                     "Current Paragraph"
 
-                });
-
-                listScope.Click += ListScope_Click; 
+                }); 
+                listScope.Height = 100;
+                listScope.Click += ListScope_Click;
+                listScope.KeyDown += List_KeyDown;
 
                 grid = new DataGridView
                 {
-                    Location = new Point(20, 120),
                     Width = this.ClientSize.Width - 40,
                     Height = this.ClientSize.Height - 10,
                     AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
@@ -132,14 +125,25 @@ namespace CSOneNoteRibbonAddIn
                 contextMenu.Items.Add("Add URL Bookmark", null, AddUrlBookmark_Click);
                 contextMenu.Items.Add("TextWrap On/Off", null, TextWrap_Click);
                 contextMenu.Items.Add("Text Wrap Current Row", null, TextWrapCurrentRow_Click);
-                contextMenu.Items.Add("Open All Notes", null, Open_All_Notes); 
+                contextMenu.Items.Add("Open all Bookmarks in this folder", null, Open_All_Notes); 
                 contextMenu.Items.Add("Export All Bookmarks", null, Export_All_Bookmarks_Click);
                 contextMenu.Items.Add("Settings", null, Settings_Click);
                 contextMenu.Items.Add("Show Method Time Logs", null, ShowMethodLogs_Click);
 
-                //Controls.Add(btnDelete);
-                Controls.Add(grid);
-                Controls.Add(listScope);
+
+                Panel containerPanel = new Panel();
+                containerPanel.Dock = DockStyle.Fill;
+                containerPanel.Padding = new Padding(10);  
+                grid.Dock = DockStyle.Fill;
+                containerPanel.Controls.Add(grid);
+                this.Controls.Add(containerPanel); 
+                this.Controls.Add(listScope);
+
+
+                StatusStrip statusStrip = new StatusStrip();
+                ToolStripStatusLabel statusLabel = new ToolStripStatusLabel("");
+                statusStrip.Items.Add(statusLabel);
+                this.Controls.Add(statusStrip);
 
                 columnHeaderContextMenu = new ContextMenuStrip();
                 var textWrapMenuItem = new ToolStripMenuItem("Text Wrap This Column");
@@ -150,7 +154,6 @@ namespace CSOneNoteRibbonAddIn
                 selectedScope = onenoteScope;
                 selectedText = displayText;
                 tablePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bookmarks.txt");
-
                 this.notebookName = notebookName;
                 this.notebookColor = notebookColor;
                 this.sectionGroupName = sectionGroupName;
@@ -161,6 +164,38 @@ namespace CSOneNoteRibbonAddIn
                 this.Font = new Font("Segoe UI", 10);
                 this.BackColor = ColorTranslator.FromHtml("#f3f3f3");
                 this.MouseDown += Form_MouseDown;
+
+                this.FormBorderStyle = FormBorderStyle.Sizable;
+                this.AutoSize = false;
+                this.MinimumSize = new Size(400, 300); // example
+                this.MaximumSize = new Size(1500, 1500); // example
+                this.ShowIcon = false;     // no icon
+                this.MinimizeBox = false;  // no minimize button
+                this.MaximizeBox = false;  // no maximize button
+                this.Text = "OneNote Bookmark Manager";
+
+                // focus handling
+                this.Shown += (s, e) =>
+                {
+                    grid.Focus();
+                };
+                grid.KeyDown += (s, e) =>
+                {
+                    if (e.KeyCode == Keys.Tab && e.Shift)
+                    {
+                        listScope.Focus();
+                        e.Handled = true;
+                    }
+                };
+                listScope.KeyDown += (s, e) =>
+                {
+                    if (e.KeyCode == Keys.Tab && e.Shift)
+                    {
+                        grid.Focus();
+                        e.Handled = true;
+                    }
+                };
+
                 LoadTable();
                 UpdateBookmarkInfo(selectedId, selectedScope, selectedText, notebookName, notebookColor,
                     sectionGroupName, sectionName, sectionColor, pageName, paraContent);
@@ -168,6 +203,48 @@ namespace CSOneNoteRibbonAddIn
             catch (Exception ex)
             {
                 MessageBox.Show("Error initializing Bookmark window: " + ex.Message);
+            }
+        }
+
+        private void List_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                this.Hide();
+            }
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                const int CS_NOCLOSE = 0x200;
+                CreateParams cp = base.CreateParams;
+                cp.ClassStyle |= CS_NOCLOSE;
+                return cp;
+            }
+        }
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            RemoveCloseButton(this.Handle);
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+
+        [DllImport("user32.dll")]
+        private static extern bool DeleteMenu(IntPtr hMenu, uint uPosition, uint uFlags);
+
+        private const uint SC_CLOSE = 0xF060;
+        private const uint MF_BYCOMMAND = 0x00000000;
+
+        private void RemoveCloseButton(IntPtr hwnd)
+        {
+            IntPtr hMenu = GetSystemMenu(hwnd, false);
+            if (hMenu != IntPtr.Zero)
+            {
+                DeleteMenu(hMenu, SC_CLOSE, MF_BYCOMMAND);
             }
         }
         public void UpdateBookmarkInfo(
@@ -621,6 +698,8 @@ namespace CSOneNoteRibbonAddIn
         #endregion
 
         #region List Scope Handlers
+
+        //click will not open if we hold ctrl key
         private void Grid_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             try
@@ -636,9 +715,14 @@ namespace CSOneNoteRibbonAddIn
                 if (item == null) return;
 
                 string clickedColumn = grid.Columns[e.ColumnIndex].Name;
-                if (clickedColumn == "Name" && item.Scope == "URL")
-                {
 
+                // Check if Ctrl is NOT pressed
+                bool ctrlPressed = (Control.ModifierKeys & Keys.Control) == Keys.Control;
+
+                if (!ctrlPressed)
+                {
+                    if (clickedColumn == "Name" && item.Scope == "URL")
+                    {
                         try
                         {
                             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -652,50 +736,39 @@ namespace CSOneNoteRibbonAddIn
                         {
                             MessageBox.Show("Failed to open URL: " + ex.Message);
                         }
-                    
-                }
-                else if (clickedColumn == "Name" && item.Type == "Bookmark")
-                {
-                    try
-                    {
-                        // Open the OneNote object (Notebook, Section, Page)
-                        var app = new Microsoft.Office.Interop.OneNote.Application();
-
-                        // If your "id" can refer to Notebook, Section, or Page, 
-                        // you may use NavigateTo with right id
-
-                        // NavigateTo(string bstrHierarchyID, string bstrObjectID, bool fNewWindow)
-                        // (see OneNote Interop docs for alternatives if you want more granularity)
-                        app.NavigateTo(item.OriginalId);
-                        // Optionally, to open in a new window:
-                        // app.NavigateTo(id, "", true);
-                        this.Hide();
                     }
-                    catch (Exception exNav)
+                    else if (clickedColumn == "Name" && item.Type == "Bookmark")
                     {
-                        MessageBox.Show("Failed to open OneNote object: " + exNav.Message);
+                        try
+                        {
+                            var app = new Microsoft.Office.Interop.OneNote.Application();
+                            app.NavigateTo(item.OriginalId);
+                            this.Hide();
+                        }
+                        catch (Exception exNav)
+                        {
+                            MessageBox.Show("Failed to open OneNote object: " + exNav.Message);
+                        }
                     }
-
-                }
-                else if (clickedColumn == "Name" && item.Type == "Folder")
-                {
-                    item.IsExpanded = !item.IsExpanded;
-                    SaveToFile();
-                    RefreshGridDisplay(cachedList ?? null);
+                    else if (clickedColumn == "Name" && item.Type == "Folder")
+                    {
+                        item.IsExpanded = !item.IsExpanded;
+                        SaveToFile();
+                        RefreshGridDisplay(cachedList ?? null);
+                    }
                 }
                 else if (clickedColumn == "Notes")
                 {
                     grid.Rows[e.RowIndex].Cells["Notes"].ReadOnly = false;
                     grid.BeginEdit(true);
                 }
-                
-
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Error handling click: " + ex.Message);
             }
         }
+
         private void ListScope_Click(object sender, EventArgs e)
         {
             using (MethodTimerLog.Time("ListScope_Click"))
@@ -705,21 +778,60 @@ namespace CSOneNoteRibbonAddIn
                     var oneNoteApp = new OneNote.Application();
                     Window currentWindow = oneNoteApp.Windows.CurrentWindow;
 
-                    // Use Onenote to get Notebook hyperlink and section hyperlink and using it get notebook name and section name
                     string notebookId = currentWindow.CurrentNotebookId;
-                    string sectionId = currentWindow.CurrentSectionId;
                     oneNoteApp.GetHyperlinkToObject(notebookId, null, out string notebookLink);
-                    oneNoteApp.GetHyperlinkToObject(sectionId, null, out string sectionLink);
-                    string notebookPath = notebookLink.Replace("onenote:///", "");
-                    string sectionPath = sectionLink.Replace("onenote:///", "");
-                    notebookPath = Uri.UnescapeDataString(notebookPath);
-                    sectionPath = Uri.UnescapeDataString(sectionPath);
 
-                    string notebookNames = Path.GetFileName(notebookPath);
-                    string sectionFile = Path.GetFileNameWithoutExtension(sectionPath.Split('#')[0]);
-                    var sectionParts = sectionPath.Split('#')[0].Split(Path.DirectorySeparatorChar);
-                    var groups = sectionParts.SkipWhile(p => p != notebookNames).Skip(1).Take(sectionParts.Length - 2).ToList();
-                    string sectionGroupNames = (groups.Count > 1 && groups.Any()) ? string.Join(" > ", groups[0]) : "";
+                    string sectionGroupId = currentWindow.CurrentSectionGroupId;
+                    string sectionGroupLink = null;
+                    if (!string.IsNullOrEmpty(sectionGroupId))
+                    {
+                        oneNoteApp.GetHyperlinkToObject(sectionGroupId, null, out sectionGroupLink);
+                    }
+
+                    string GetLastPathPart(string url)
+                    {
+                        if (string.IsNullOrEmpty(url))
+                            return null;
+
+                        string trimmed = url.TrimEnd('/', '\\');
+
+                        if (trimmed.StartsWith("onenote:", StringComparison.OrdinalIgnoreCase))
+                            trimmed = trimmed.Substring("onenote:".Length);
+
+                        string[] parts = trimmed.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (parts.Length == 0)
+                            return null;
+
+                        string lastPart = System.Net.WebUtility.UrlDecode(parts[parts.Length - 1]);
+                        return lastPart;
+                    }
+
+                    string notebookNames = GetLastPathPart(notebookLink);
+                    string sectionGroupNames = "No Section Group";
+                    if (!string.IsNullOrEmpty(sectionGroupLink))
+                    {
+                        sectionGroupNames = GetLastPathPart(sectionGroupLink);
+                    }
+
+                    // Section Name
+                    string sectionId = currentWindow.CurrentSectionId;
+                    oneNoteApp.GetHyperlinkToObject(sectionId, null, out string sectionLink);
+
+                    string sectionNames = null;
+                    if (!string.IsNullOrEmpty(sectionLink))
+                    {
+                        int pathEnd = sectionLink.IndexOf(".one", StringComparison.OrdinalIgnoreCase);
+                        if (pathEnd > -1)
+                        {
+                            string upToExt = sectionLink.Substring(0, pathEnd);
+                            char[] separators = new char[] { '/', '\\' };
+                            string[] part = upToExt.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+                            if (part.Length > 0)
+                            {
+                                sectionNames = System.Net.WebUtility.UrlDecode(part[part.Length - 1]);
+                            }
+                        }
+                    }
 
                     var model = GetCurrentNotebookModel(oneNoteApp);
                     if (model == null)
@@ -734,8 +846,8 @@ namespace CSOneNoteRibbonAddIn
                     string displayText = model.Page?.Name ?? "";
                     string notebookName = notebookNames ?? "";
                     string notebookColor = model.NotebookColor ?? "";
-                    string sectionGroupName = sectionGroupNames ?? "";
-                    string sectionName = sectionFile ?? "";
+                    string sectionGroupName = sectionGroupNames ?? "No Section Group";
+                    string sectionName = sectionNames ?? "";
                     string sectionColor = model.Section?.Color ?? "";
                     string pageName = model.Page.Name ?? "";
                     string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "";
@@ -1521,6 +1633,24 @@ namespace CSOneNoteRibbonAddIn
                 {
                     this.Hide();
                 }
+                else if (e.Control && e.KeyCode == Keys.C)
+                {
+                    var grid = sender as DataGridView;
+                    if (grid != null && grid.CurrentCell != null)
+                    {
+                        // Check if the current cell is in the "Notes" column
+                        if (grid.CurrentCell.OwningColumn.Name == "Notes")
+                        {
+                            // Get the text from the current cell
+                            var cellValue = grid.CurrentCell.Value?.ToString();
+                            if (!string.IsNullOrEmpty(cellValue))
+                            {
+                                Clipboard.SetText(cellValue);
+                                e.Handled = true; // Mark event as handled to prevent bubbling
+                            }
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -1601,6 +1731,7 @@ namespace CSOneNoteRibbonAddIn
                     grid.Columns.Add("Notes", "Notes");
                     grid.Columns.Add("Depth", "Depth");
 
+
                     // Set visibility to false for some columns as before
                     grid.Columns["Type"].Visible = false;
                     grid.Columns["Scope"].Visible = false;
@@ -1625,7 +1756,7 @@ namespace CSOneNoteRibbonAddIn
                     grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
                     grid.DefaultCellStyle.SelectionBackColor = ColorTranslator.FromHtml("#ddd9ec");
                     grid.DefaultCellStyle.SelectionForeColor = Color.Black;
-
+                    grid.ClipboardCopyMode = DataGridViewClipboardCopyMode.Disable;
                     grid.Columns["BookMarkPath"].SortMode = DataGridViewColumnSortMode.NotSortable;
                     grid.Columns["Notes"].SortMode = DataGridViewColumnSortMode.NotSortable;
                     if (grid.Columns.Contains("Name"))
@@ -1693,7 +1824,7 @@ namespace CSOneNoteRibbonAddIn
             
         }
         #endregion
-        
+
         #region Window Size and Position
         private string QuoteValue(object val)
         {
@@ -1743,7 +1874,7 @@ namespace CSOneNoteRibbonAddIn
             if (m.Msg == WM_NCHITTEST)
             {
                 Point pos = PointToClient(Cursor.Position);
-                int resizeDir = 0;
+                int resizeDir = 2;
                 int ResizeBorder = 8; // Set your custom border size
 
                 if (pos.X < ResizeBorder) resizeDir |= 1;
@@ -1766,7 +1897,7 @@ namespace CSOneNoteRibbonAddIn
                     }
                 }
             }
-
+         
             base.WndProc(ref m);
         }
         #endregion
