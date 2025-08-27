@@ -1,0 +1,137 @@
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.tlb
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\Microsoft.Office.Interop.OneNote.dll
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.AssemblyReference.cache
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.ResolveComReference.cache
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.Properties.Resources.resources
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.TestForm.resources
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.GenerateResource.cache
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.CoreCompileInputs.cache
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNot.0228D662.Up2Date
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\New folder\OneCodeTeam\C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.tlb
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\Microsoft.Office.Interop.OneNote.dll
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.AssemblyReference.cache
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.ResolveComReference.cache
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.Properties.Resources.resources
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.TestForm.resources
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.GenerateResource.cache
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.CoreCompileInputs.cache
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNot.0228D662.Up2Date
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\Deliveriables\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.Connect.resources
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\libHarfBuzzSharp.dylib
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\x86\libHarfBuzzSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\x64\libHarfBuzzSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\arm64\libHarfBuzzSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\libSkiaSharp.dylib
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\x86\libSkiaSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\x64\libSkiaSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\arm64\libSkiaSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\x64\libSkiaSharp.so
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\arm\libSkiaSharp.so
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\arm64\libSkiaSharp.so
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\musl-x64\libSkiaSharp.so
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\folder_close.png
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\folder_open.png
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\Resources\folder_open.png
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.dll.config
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.tlb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\ExCSS.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\HarfBuzzSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\Newtonsoft.Json.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\ShimSkiaSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.HarfBuzz.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\Svg.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Buffers.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Drawing.Common.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Memory.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Numerics.Vectors.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\HarfBuzzSharp.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\HarfBuzzSharp.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\Newtonsoft.Json.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.HarfBuzz.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.HarfBuzz.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\Svg.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Buffers.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Drawing.Common.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Drawing.Common.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Memory.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Numerics.Vectors.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.AssemblyReference.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.ResolveComReference.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.Connect.resources
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.Properties.Resources.resources
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.TestForm.resources
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.GenerateResource.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.CoreCompileInputs.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNot.0228D662.Up2Date
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\libHarfBuzzSharp.dylib
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\x86\libHarfBuzzSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\x64\libHarfBuzzSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\arm64\libHarfBuzzSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\libSkiaSharp.dylib
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\x86\libSkiaSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\x64\libSkiaSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\arm64\libSkiaSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\x64\libSkiaSharp.so
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\arm\libSkiaSharp.so
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\arm64\libSkiaSharp.so
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\musl-x64\libSkiaSharp.so
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\folder_close.png
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\folder_open.png
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\Resources\folder_open.png
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.dll.config
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\ExCSS.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\HarfBuzzSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\Newtonsoft.Json.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\ShimSkiaSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.HarfBuzz.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\Svg.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Buffers.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Drawing.Common.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Memory.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Numerics.Vectors.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\HarfBuzzSharp.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\HarfBuzzSharp.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\Newtonsoft.Json.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.HarfBuzz.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\SkiaSharp.HarfBuzz.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\Svg.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Buffers.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Drawing.Common.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Drawing.Common.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Memory.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Numerics.Vectors.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.AssemblyReference.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.ResolveComReference.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.Connect.resources
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.Properties.Resources.resources
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.TestForm.resources
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.GenerateResource.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.csproj.CoreCompileInputs.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\obj\Debug\CSOneNot.0228D662.Up2Date
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\obj\Debug\CSOneNoteRibbonAddIn.pdb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\BookMark_Addin\CSOneNoteRibbonAddIn\bin\Debug\CSOneNoteRibbonAddIn.tlb

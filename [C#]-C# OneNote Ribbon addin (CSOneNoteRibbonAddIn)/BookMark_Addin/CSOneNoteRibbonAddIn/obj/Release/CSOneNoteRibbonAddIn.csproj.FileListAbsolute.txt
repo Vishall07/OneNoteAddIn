@@ -1,0 +1,15 @@
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Release\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Release\CSOneNoteRibbonAddIn.tlb
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Release\Microsoft.Office.Interop.OneNote.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Release\System.ValueTuple.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Release\CSOneNoteRibbonAddIn.csproj.AssemblyReference.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Release\CSOneNoteRibbonAddIn.csproj.ResolveComReference.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Release\CSOneNoteRibbonAddIn.Connect.resources
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Release\CSOneNoteRibbonAddIn.Properties.Resources.resources
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Release\CSOneNoteRibbonAddIn.TestForm.resources
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Release\CSOneNoteRibbonAddIn.csproj.GenerateResource.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Release\CSOneNoteRibbonAddIn.csproj.CoreCompileInputs.cache
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Release\CSOneNot.0228D662.Up2Date
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\obj\Release\CSOneNoteRibbonAddIn.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Release\Newtonsoft.Json.dll
+E:\UpWork_Projects\GitHub_Repo\OneNoteAddIn\[C#]-C# OneNote Ribbon addin (CSOneNoteRibbonAddIn)\C#\CSOneNoteRibbonAddIn\bin\Release\Newtonsoft.Json.xml
