@@ -9,6 +9,8 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices; 
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
 using OneNote = Microsoft.Office.Interop.OneNote;
@@ -351,7 +353,10 @@ namespace CSOneNoteRibbonAddIn
         }
         private void Settings_Click(object sender, EventArgs e)
         {
-            using (FontSizeDialog dlg = new FontSizeDialog())
+            //var backupConfigForm = new BackupConfigForm();
+            //backupConfigForm.ShowDialog(this);
+
+            using (BackupConfigForm dlg = new BackupConfigForm())
             {
                 dlg.FontSize = this.Font.Size;
                 dlg.StartPosition = FormStartPosition.CenterParent;
@@ -388,7 +393,7 @@ namespace CSOneNoteRibbonAddIn
                     grid.Height = (int)(grid.Height * scaleFactor);
 
                     // Optionally reposition controls if needed for layout consistency
-        
+
                 }
             }
         }
@@ -834,12 +839,15 @@ namespace CSOneNoteRibbonAddIn
                             bookmarkName = pageName ?? "Unnamed Page";
                             break;
                         case "Current Section":
+                            selectedId = sectionId;
                             bookmarkName = sectionName ?? "Unnamed Section";
                             break;
                         case "Current Section Group":
+                            selectedId = sectionGroupId ?? sectionId;
                             bookmarkName = sectionGroupName ?? "Unnamed Section Group";
                             break;
                         case "Current Notebook":
+                            selectedId = notebookId ?? sectionGroupId ?? sectionId;
                             bookmarkName = notebookName ?? "Unnamed Notebook";
                             break;
                         default:
@@ -1372,7 +1380,7 @@ namespace CSOneNoteRibbonAddIn
                 if (insertIndex < 0) insertIndex = siblings.Count;
             }
             // ---- BOTTOM ZONE ----
-            else if (dropPositionRatio >= 0.65)
+            else if (dropPositionRatio >= 0.55)
             {
                 parentId = targetItem.ParentId;
                 siblings = items.Where(i => i.ParentId == parentId)
@@ -1999,7 +2007,7 @@ namespace CSOneNoteRibbonAddIn
                         grid.Rows[rowIndex].Tag = item;
 
                         // Color coding for folders
-                        if (item.Type == "Folder")
+                        if (item.Type == "Folder" || item.Type == "Bookmark")
                         {
                             grid.Rows[rowIndex].DefaultCellStyle.ForeColor = Color.DarkBlue;
                             if (!item.IsExpanded) // collapsed folder
@@ -2094,187 +2102,6 @@ namespace CSOneNoteRibbonAddIn
             base.WndProc(ref m);
         }
         #endregion
-
-        #region SOON TO BE REMOVED
-        public static class Prompt
-        {
-            public static string ShowDialog(string text, string caption, string defaultText)
-            {
-                Form prompt = new Form()
-                {
-                    Width = 400,
-                    Height = 150,
-                    FormBorderStyle = FormBorderStyle.FixedDialog,
-                    Text = caption,
-                    StartPosition = FormStartPosition.CenterParent,
-                    MinimizeBox = false,
-                    MaximizeBox = false
-                };
-                Label textLabel = new Label() { Left = 20, Top = 20, Text = text, AutoSize = true };
-                TextBox inputBox = new TextBox() { Left = 20, Top = 50, Width = 340, Text = defaultText };
-                Button confirmation = new Button() { Text = "OK", Left = 280, Width = 80, Top = 80, DialogResult = DialogResult.OK };
-                confirmation.Click += (sender, e) => { prompt.Close(); };
-                prompt.Controls.Add(textLabel);
-                prompt.Controls.Add(inputBox);
-                prompt.Controls.Add(confirmation);
-                prompt.AcceptButton = confirmation;
-
-                return prompt.ShowDialog() == DialogResult.OK ? inputBox.Text : null;
-            }
-        }
-        private void BtnSave_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(selectedId))
-                {
-                    MessageBox.Show("No bookmark selected to save.");
-                    return;
-                }
-
-                string bookmarkName;
-                string selected = selectedScope; // Use selectedScope not selectedId
-
-                switch (selected)
-                {
-                    case "Current Paragraph":
-                        bookmarkName = paraContent ?? "Unnamed Paragraph";
-                        break;
-                    case "Current Page":
-                        bookmarkName = pageName ?? "Unnamed Page";
-                        break;
-                    case "Current Section":
-                        bookmarkName = sectionName ?? "Unnamed Section";
-                        break;
-                    case "Current Section Group":
-                        bookmarkName = sectionGroupName ?? "Unnamed Section Group";
-                        break;
-                    case "Current Notebook":
-                        bookmarkName = notebookName ?? "Unnamed Notebook";
-                        break;
-                    default:
-                        bookmarkName = "Unnamed Bookmark";
-                        break;
-                }
-
-                var newBookmark = new BookmarkItem
-                {
-                    Type = "Bookmark",
-                    Scope = selected,
-                    Name = bookmarkName,
-                    ParentId = null,
-                    Id = selectedId + "_" + Guid.NewGuid().ToString(),    // Composite unique ID
-                    OriginalId = selectedId, // The actual OneNote ID
-                    NotebookName = notebookName,
-                    NotebookColor = notebookColor,
-                    SectionGroupName = sectionGroupName,
-                    SectionName = sectionName,
-                    SectionColor = sectionColor,
-                    PageName = pageName,
-                    ParaContent = paraContent,
-                    Notes = "",
-                    SortOrder = items.Count // append at end
-                };
-
-                // Do NOT remove duplicates!
-                items.Add(newBookmark);
-
-                SaveToFile();
-                cachedList = null;  // reset cached list on data change
-                RefreshGridDisplay();
-                this.Hide();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error saving: " + ex.Message);
-            }
-        }
-        private string IndentName(string name, int depth, bool isFolder = false, bool expanded = true, string scope = "")
-        {
-            string indent = new string(' ', depth * 6);
-
-            if (isFolder)
-            {
-                // Folder open or closed icon
-                return indent + (expanded ? "📂 " : "📁 ") + name;
-            }
-            else
-            {
-                string icon;
-
-                switch (scope)
-                {
-                    case "Current Notebook": icon = "📓 "; break;  // Notebook
-                    case "Current Section Group": icon = "📙 "; break;  // Section Group
-                    case "Current Section": icon = "📑 "; break;  // Section
-                    case "Current Page": icon = "📝 "; break;  // Page
-                    case "Current Paragraph": icon = "¶ "; break;  // Paragraph
-                    case "File": icon = "📄 "; break;  // File
-                    case "NotebookObject": icon = "📔 "; break;  // Notebook object
-                    default: icon = "🔖 "; break;  // Generic bookmark
-                }
-
-                return indent + icon + name;
-            }
-        }
-        #endregion
-        public class FontSizeDialog : Form
-        {
-            private NumericUpDown numericFontSize;
-            private Button btnOK;
-            private Button btnCancel;
-
-            public float FontSize { get; set; }
-
-            public FontSizeDialog()
-            {
-                this.Text = "Settings - Font Size";
-                this.FormBorderStyle = FormBorderStyle.FixedDialog;
-                this.StartPosition = FormStartPosition.CenterParent;
-                this.Width = 250;
-                this.Height = 150;
-                this.MaximizeBox = false;
-                this.MinimizeBox = false;
-                this.ShowInTaskbar = false;
-                this.TopMost = true;
-
-                numericFontSize = new NumericUpDown()
-                {
-                    Minimum = 6,
-                    Maximum = 72,
-                    DecimalPlaces = 1,
-                    Increment = 0.5M,
-                    Location = new Point(20, 20),
-                    Width = 100
-                };
-                this.Controls.Add(numericFontSize);
-
-                btnOK = new Button()
-                {
-                    Text = "OK",
-                    DialogResult = DialogResult.OK,
-                    Location = new Point(20, 60),
-                    Width = 80
-                };
-                btnOK.Click += (s, e) => { FontSize = (float)numericFontSize.Value; this.Close(); };
-                this.Controls.Add(btnOK);
-
-                btnCancel = new Button()
-                {
-                    Text = "Cancel",
-                    DialogResult = DialogResult.Cancel,
-                    Location = new Point(120, 60),
-                    Width = 80
-                };
-                this.Controls.Add(btnCancel);
-            }
-
-            protected override void OnShown(EventArgs e)
-            {
-                base.OnShown(e);
-                numericFontSize.Value = (decimal)FontSize;
-            }
-        }
         private class BookmarkItem
         {
             public string Type { get; set; } // "Folder" or "Bookmark"
@@ -2453,5 +2280,530 @@ namespace CSOneNoteRibbonAddIn
                     logsListBox.Items.Add(log);
             }
         }
+        public partial class BackupConfigForm : Form
+        {
+            private BackupConfig _config;
+            private CancellationTokenSource _runNowCts;
+
+            public BackupConfigForm()
+            {
+                InitializeComponent();
+            }
+
+            private void BackupConfigForm_Load(object sender, EventArgs e)
+            {
+                try
+                {
+                    _config = BackupConfig.LoadOrCreate();
+
+                    // Set label texts instead of textboxes
+                    lblBackupPathValue.Text = _config.BackupPath;
+                    dtpBackupTime.Value = DateTime.Today + TimeSpan.Parse(_config.BackupTime);
+                    chkShouldRun.Checked = _config.ShouldRun;
+                    lblNextScheduledTimeValue.Text = _config.NextScheduledTime.ToString("yyyy-MM-dd HH:mm:ss");
+                    lblLastBackupTimeValue.Text = _config.LastBackupTime.ToString("yyyy-MM-dd HH:mm:ss");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error loading config: {ex.Message}");
+                    _config = new BackupConfig();
+                }
+            }
+
+            private async void btnSave_Click(object sender, EventArgs e)
+            {
+                try
+                {
+                    _config.BackupPath = lblBackupPathValue.Text;  // backup path updated only by folder selector
+                    _config.BackupTime = dtpBackupTime.Value.ToString("HH:mm");
+                    _config.ShouldRun = chkShouldRun.Checked;
+
+                    // Update NextScheduledTime: next day + backup time
+                    var nextDate = DateTime.Today.AddDays(1);
+                    var backupTime = TimeSpan.Parse(_config.BackupTime);
+                    _config.NextScheduledTime = nextDate + backupTime;
+
+                    _config.Save();
+
+                    // Update UI reflecting new scheduled time
+                    lblNextScheduledTimeValue.Text = _config.NextScheduledTime.ToString("yyyy-MM-dd HH:mm:ss");
+
+                    MessageBox.Show("Configuration saved successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // Run backup now after updating config and schedule
+                    await RunBackupAsync();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error saving config: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+
+            private async Task RunBackupAsync()
+            {
+                if (_runNowCts != null)
+                {
+                    MessageBox.Show("Backup task already running.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                _runNowCts = new CancellationTokenSource();
+
+                try
+                {
+                    var backupPath = lblBackupPathValue.Text;
+                    if (string.IsNullOrWhiteSpace(backupPath))
+                    {
+                        MessageBox.Show("Backup path is empty.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    progressBar.Visible = true;
+
+                    // Run the actual backup process - assuming this simulates copying with delay
+                    await AutoExportHelper.CopyFileWithDelayAsync(backupPath);
+
+                    // Update last backup time and save config
+                    _config.LastBackupTime = DateTime.Now;
+                    _config.Save();
+
+                    // Update UI with last backup time loaded from config
+                    lblLastBackupTimeValue.Text = _config.LastBackupTime.ToString("yyyy-MM-dd HH:mm:ss");
+
+                    MessageBox.Show("Backup task completed successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error during backup task: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                finally
+                {
+                    progressBar.Visible = false;
+                    _runNowCts.Dispose();
+                    _runNowCts = null;
+                }
+            }
+
+            private void btnSelectFolder_Click(object sender, EventArgs e)
+            {
+                using (FolderBrowserDialog fbd = new FolderBrowserDialog())
+                {
+                    fbd.Description = "Select Backup Folder";
+                    fbd.SelectedPath = lblBackupPathValue.Text;
+                    if (fbd.ShowDialog() == DialogResult.OK)
+                    {
+                        lblBackupPathValue.Text = fbd.SelectedPath;
+                    }
+                }
+            }
+
+            private async void btnRunTaskNow_Click(object sender, EventArgs e)
+            {
+                await RunBackupAsync();
+            }
+
+            private void InitializeComponent()
+            {
+                // Font change controls at the top
+                Label labelChangeFont = new Label()
+                {
+                    Text = "Change Font",
+                    Location = new Point(20, 20),
+                    Width = 100
+                };
+                this.Controls.Add(labelChangeFont);
+
+                numericFontSize = new NumericUpDown()
+                {
+                    Minimum = 6,
+                    Maximum = 16,
+                    Value = 10,  // Initial valid value
+                    DecimalPlaces = 1,
+                    Increment = 0.5M,
+                    Location = new Point(150, 20),
+                    Width = 100
+                };
+                this.Controls.Add(numericFontSize);
+
+                btnOK = new Button()
+                {
+                    Text = "OK",
+                    DialogResult = DialogResult.OK,
+                    Location = new Point(270, 20),
+                    Width = 80
+                };
+                btnOK.Click += (s, e) => { FontSize = (float)numericFontSize.Value; this.Close(); };
+                this.Controls.Add(btnOK);
+
+                // Panel for backups
+                Panel backupPanel = new Panel()
+                {
+                    Location = new Point(10, 70),
+                    Size = new Size(460, 210),
+                    BorderStyle = BorderStyle.FixedSingle
+                };
+
+                Label lblPanelTitle = new Label()
+                {
+                    Text = "Automatic backups of bookmarks:",
+                    Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                    Location = new Point(5, 5),
+                    AutoSize = true
+                };
+                backupPanel.Controls.Add(lblPanelTitle);
+
+                // Control positions inside the panel
+                lblBackupPath = new Label()
+                {
+                    Text = "Backup Path",
+                    Location = new Point(20, 35),
+                    AutoSize = true
+                };
+                backupPanel.Controls.Add(lblBackupPath);
+
+                lblBackupPathValue = new Label()
+                {
+                    Location = new Point(150, 32),
+                    Name = "lblBackupPathValue",
+                    Size = new Size(200, 22),
+                    BorderStyle = BorderStyle.Fixed3D,
+                    Text = ""
+                };
+                backupPanel.Controls.Add(lblBackupPathValue);
+
+                btnSelectFolder = new Button()
+                {
+                    Location = new Point(360, 32),
+                    Name = "btnSelectFolder",
+                    Size = new Size(40, 22),
+                    TabIndex = 1,
+                    Text = "...",
+                    UseVisualStyleBackColor = true
+                };
+                btnSelectFolder.Click += new System.EventHandler(this.btnSelectFolder_Click);
+                backupPanel.Controls.Add(btnSelectFolder);
+
+                lblBackupTime = new Label()
+                {
+                    Text = "Backup Time",
+                    Location = new Point(20, 67),
+                    AutoSize = true
+                };
+                backupPanel.Controls.Add(lblBackupTime);
+
+                dtpBackupTime = new DateTimePicker()
+                {
+                    Format = DateTimePickerFormat.Time,
+                    ShowUpDown = true,
+                    Location = new Point(150, 65),
+                    Size = new Size(100, 22),
+                    Name = "dtpBackupTime"
+                };
+                backupPanel.Controls.Add(dtpBackupTime);
+
+                chkShouldRun = new CheckBox()
+                {
+                    Location = new Point(270, 68),
+                    Name = "chkShouldRun",
+                    Size = new Size(18, 17)
+                };
+                backupPanel.Controls.Add(chkShouldRun);
+
+                lblShouldRun = new Label()
+                {
+                    Text = "Should Run",
+                    Location = new Point(290, 67),
+                    AutoSize = true
+                };
+                backupPanel.Controls.Add(lblShouldRun);
+
+                lblNextScheduledTime = new Label()
+                {
+                    Text = "Next Scheduled Time",
+                    Location = new Point(20, 100),
+                    AutoSize = true
+                };
+                backupPanel.Controls.Add(lblNextScheduledTime);
+
+                lblNextScheduledTimeValue = new Label()
+                {
+                    Location = new Point(150, 97),
+                    Name = "lblNextScheduledTimeValue",
+                    Size = new Size(200, 22),
+                    BorderStyle = BorderStyle.Fixed3D,
+                    Text = ""
+                };
+                backupPanel.Controls.Add(lblNextScheduledTimeValue);
+
+                lblLastBackupTime = new Label()
+                {
+                    Text = "Last Backup Time",
+                    Location = new Point(20, 132),
+                    AutoSize = true
+                };
+                backupPanel.Controls.Add(lblLastBackupTime);
+
+                lblLastBackupTimeValue = new Label()
+                {
+                    Location = new Point(150, 129),
+                    Name = "lblLastBackupTimeValue",
+                    Size = new Size(200, 22),
+                    BorderStyle = BorderStyle.Fixed3D,
+                    Text = ""
+                };
+                backupPanel.Controls.Add(lblLastBackupTimeValue);
+
+                btnSave = new Button()
+                {
+                    Text = "Save",
+                    Location = new Point(150, 170),
+                    Size = new Size(100, 30)
+                };
+                btnSave.Click += new System.EventHandler(this.btnSave_Click);
+                backupPanel.Controls.Add(btnSave);
+
+                btnRunTaskNow = new Button()
+                {
+                    Text = "Run Task Now",
+                    Location = new Point(270, 170),
+                    Size = new Size(120, 30)
+                };
+                btnRunTaskNow.Click += new System.EventHandler(this.btnRunTaskNow_Click);
+                backupPanel.Controls.Add(btnRunTaskNow);
+
+                progressBar = new ProgressBar()
+                {
+                    Location = new Point(20, 210),
+                    Size = new Size(420, 14),
+                    Style = ProgressBarStyle.Marquee,
+                    MarqueeAnimationSpeed = 10,
+                    Visible = false
+                };
+                backupPanel.Controls.Add(progressBar);
+
+                this.Controls.Add(backupPanel);
+
+                // Form settings
+                this.ClientSize = new System.Drawing.Size(480, 320);
+                this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+                this.MaximizeBox = false;
+                this.MinimizeBox = false;
+                this.ShowIcon = false;
+                this.StartPosition = FormStartPosition.CenterScreen;
+                this.Text = "Settings";
+                this.Load += new System.EventHandler(this.BackupConfigForm_Load);
+
+
+                this.ResumeLayout(false);
+                this.PerformLayout();
+            }
+
+            protected override void OnShown(EventArgs e)
+            {
+                base.OnShown(e);
+                numericFontSize.Value = (decimal)FontSize;
+            }
+
+            private ProgressBar progressBar;
+            private System.Windows.Forms.Label lblBackupPathValue;
+            private System.Windows.Forms.Label lblNextScheduledTimeValue;
+            private System.Windows.Forms.Label lblLastBackupTimeValue;
+            private System.Windows.Forms.Button btnSelectFolder;
+            private System.Windows.Forms.DateTimePicker dtpBackupTime;
+            private System.Windows.Forms.CheckBox chkShouldRun;
+            private System.Windows.Forms.Button btnSave;
+            private System.Windows.Forms.Button btnRunTaskNow;
+            private System.Windows.Forms.Label lblBackupPath;
+            private System.Windows.Forms.Label lblBackupTime;
+            private System.Windows.Forms.Label lblShouldRun;
+            private System.Windows.Forms.Label lblNextScheduledTime;
+            private System.Windows.Forms.Label lblLastBackupTime;
+            private NumericUpDown numericFontSize;
+            private Button btnOK;
+            private Button btnCancel;
+
+            public float FontSize { get; set; }
+        }
+
+        #region SOON TO BE REMOVED
+        public static class Prompt
+        {
+            public static string ShowDialog(string text, string caption, string defaultText)
+            {
+                Form prompt = new Form()
+                {
+                    Width = 400,
+                    Height = 150,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    Text = caption,
+                    StartPosition = FormStartPosition.CenterParent,
+                    MinimizeBox = false,
+                    MaximizeBox = false
+                };
+                Label textLabel = new Label() { Left = 20, Top = 20, Text = text, AutoSize = true };
+                TextBox inputBox = new TextBox() { Left = 20, Top = 50, Width = 340, Text = defaultText };
+                Button confirmation = new Button() { Text = "OK", Left = 280, Width = 80, Top = 80, DialogResult = DialogResult.OK };
+                confirmation.Click += (sender, e) => { prompt.Close(); };
+                prompt.Controls.Add(textLabel);
+                prompt.Controls.Add(inputBox);
+                prompt.Controls.Add(confirmation);
+                prompt.AcceptButton = confirmation;
+
+                return prompt.ShowDialog() == DialogResult.OK ? inputBox.Text : null;
+            }
+        }
+        private void BtnSave_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(selectedId))
+                {
+                    MessageBox.Show("No bookmark selected to save.");
+                    return;
+                }
+
+                string bookmarkName;
+                string selected = selectedScope; // Use selectedScope not selectedId
+
+                switch (selected)
+                {
+                    case "Current Paragraph":
+                        bookmarkName = paraContent ?? "Unnamed Paragraph";
+                        break;
+                    case "Current Page":
+                        bookmarkName = pageName ?? "Unnamed Page";
+                        break;
+                    case "Current Section":
+                        bookmarkName = sectionName ?? "Unnamed Section";
+                        break;
+                    case "Current Section Group":
+                        bookmarkName = sectionGroupName ?? "Unnamed Section Group";
+                        break;
+                    case "Current Notebook":
+                        bookmarkName = notebookName ?? "Unnamed Notebook";
+                        break;
+                    default:
+                        bookmarkName = "Unnamed Bookmark";
+                        break;
+                }
+
+                var newBookmark = new BookmarkItem
+                {
+                    Type = "Bookmark",
+                    Scope = selected,
+                    Name = bookmarkName,
+                    ParentId = null,
+                    Id = selectedId + "_" + Guid.NewGuid().ToString(),    // Composite unique ID
+                    OriginalId = selectedId, // The actual OneNote ID
+                    NotebookName = notebookName,
+                    NotebookColor = notebookColor,
+                    SectionGroupName = sectionGroupName,
+                    SectionName = sectionName,
+                    SectionColor = sectionColor,
+                    PageName = pageName,
+                    ParaContent = paraContent,
+                    Notes = "",
+                    SortOrder = items.Count // append at end
+                };
+
+                // Do NOT remove duplicates!
+                items.Add(newBookmark);
+
+                SaveToFile();
+                cachedList = null;  // reset cached list on data change
+                RefreshGridDisplay();
+                this.Hide();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error saving: " + ex.Message);
+            }
+        }
+        private string IndentName(string name, int depth, bool isFolder = false, bool expanded = true, string scope = "")
+        {
+            string indent = new string(' ', depth * 6);
+
+            if (isFolder)
+            {
+                // Folder open or closed icon
+                return indent + (expanded ? "📂 " : "📁 ") + name;
+            }
+            else
+            {
+                string icon;
+
+                switch (scope)
+                {
+                    case "Current Notebook": icon = "📓 "; break;  // Notebook
+                    case "Current Section Group": icon = "📙 "; break;  // Section Group
+                    case "Current Section": icon = "📑 "; break;  // Section
+                    case "Current Page": icon = "📝 "; break;  // Page
+                    case "Current Paragraph": icon = "¶ "; break;  // Paragraph
+                    case "File": icon = "📄 "; break;  // File
+                    case "NotebookObject": icon = "📔 "; break;  // Notebook object
+                    default: icon = "🔖 "; break;  // Generic bookmark
+                }
+
+                return indent + icon + name;
+            }
+        }
+        public class FontSizeDialog : Form
+        {
+            private NumericUpDown numericFontSize;
+            private Button btnOK;
+            private Button btnCancel;
+
+            public float FontSize { get; set; }
+
+            public FontSizeDialog()
+            {
+                this.Text = "Settings - Font Size";
+                this.FormBorderStyle = FormBorderStyle.FixedDialog;
+                this.StartPosition = FormStartPosition.CenterParent;
+                this.Width = 250;
+                this.Height = 150;
+                this.MaximizeBox = false;
+                this.MinimizeBox = false;
+                this.ShowInTaskbar = false;
+                this.TopMost = true;
+
+                numericFontSize = new NumericUpDown()
+                {
+                    Minimum = 6,
+                    Maximum = 72,
+                    DecimalPlaces = 1,
+                    Increment = 0.5M,
+                    Location = new Point(20, 20),
+                    Width = 100
+                };
+                this.Controls.Add(numericFontSize);
+
+                btnOK = new Button()
+                {
+                    Text = "OK",
+                    DialogResult = DialogResult.OK,
+                    Location = new Point(20, 60),
+                    Width = 80
+                };
+                btnOK.Click += (s, e) => { FontSize = (float)numericFontSize.Value; this.Close(); };
+                this.Controls.Add(btnOK);
+
+                btnCancel = new Button()
+                {
+                    Text = "Cancel",
+                    DialogResult = DialogResult.Cancel,
+                    Location = new Point(120, 60),
+                    Width = 80
+                };
+                this.Controls.Add(btnCancel);
+            }
+
+            protected override void OnShown(EventArgs e)
+            {
+                base.OnShown(e);
+                numericFontSize.Value = (decimal)FontSize;
+            }
+        }
+        #endregion
     }
 }

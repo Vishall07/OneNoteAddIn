@@ -15,6 +15,10 @@ EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
 \***************************************************************************/
 
+using CSOneNoteRibbonAddIn;
+using System;
+using System.Windows.Forms;
+
 namespace CSOneNoteRibbonAddIn
 {
     #region Imports directives
@@ -25,11 +29,13 @@ namespace CSOneNoteRibbonAddIn
     using System.IO;
     using System.Linq;
     using System.Runtime.InteropServices;
+    using System.Text.Json;
     using System.Threading;
+    using System.Threading.Tasks;
     using System.Windows.Forms;
     using static CSOneNoteRibbonAddIn.BookMark_Window;
     using OneNote = Microsoft.Office.Interop.OneNote;
-    
+
     #endregion
 
     #region Read me for Add-in installation and setup information.
@@ -58,6 +64,8 @@ namespace CSOneNoteRibbonAddIn
         private Thread _uiThreadNotes;
         private BookMark_Window _bookmarkWindow;
         private Option_Window _notesWindow;
+        private CancellationTokenSource cts = new CancellationTokenSource();
+
         /// <summary>
         ///		Implements the constructor for the Add-in object.
         ///		Place your initialization code within this method.
@@ -80,7 +88,7 @@ namespace CSOneNoteRibbonAddIn
         ///      Object representing this Add-in.
         /// </param>
         /// <seealso class='IDTExtensibility2' />
-        public void OnConnection(object application, Extensibility.ext_ConnectMode connectMode, 
+        public void OnConnection(object application, Extensibility.ext_ConnectMode connectMode,
             object addInInst, ref System.Array custom)
         {
             //MessageBox.Show("CSOneNoteRibbonAddIn OnConnection UPDATE");
@@ -145,6 +153,7 @@ namespace CSOneNoteRibbonAddIn
         /// <seealso class='IDTExtensibility2' />
         public void OnStartupComplete(ref Array custom)
         {
+            Task backupTask = AutoExportHelper.RunPeriodicCopyAsync(cts.Token);
             /// Run the form on the UI thread
             //MessageBox.Show("CSOneNoteRibbonAddIn OnStartupComplete");
         }
@@ -160,7 +169,7 @@ namespace CSOneNoteRibbonAddIn
         public void OnBeginShutdown(ref System.Array custom)
         {
             //MessageBox.Show("CSOneNoteRibbonAddIn OnBeginShutdown");
-
+            cts.Cancel();
             if (this.applicationObject != null)
             {
                 this.applicationObject = null;
@@ -197,16 +206,16 @@ namespace CSOneNoteRibbonAddIn
 
         #region Button Handler
         public BookMark_Window CreateBookmarkWindow(
-     string selectedId,
-     string selectedScope,
-     string displayText,
-     string notebookName,
-     string notebookColor,
-     string sectionGroupName,
-     string sectionName,
-     string sectionColor,
-     string pageName,
-     string paraContent)
+         string selectedId,
+         string selectedScope,
+         string displayText,
+         string notebookName,
+         string notebookColor,
+         string sectionGroupName,
+         string sectionName,
+         string sectionColor,
+         string pageName,
+         string paraContent)
         {
             return new BookMark_Window(
                 selectedId,
@@ -619,4 +628,130 @@ namespace CSOneNoteRibbonAddIn
         }
         #endregion
     }
+
+    public class BackupConfig
+    {
+        public string BackupPath { get; set; }
+        public string BackupTime { get; set; } 
+        public bool ShouldRun { get; set; }
+        public DateTime NextScheduledTime { get; set; }
+        public DateTime LastBackupTime { get; set; }
+
+        private static readonly string ConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BackupConfig.txt");
+        public static BackupConfig LoadOrCreate()
+        {
+            if (!File.Exists(ConfigPath))
+            {
+                var now = DateTime.Now;
+                var config = new BackupConfig
+                {
+                    BackupPath = @"C:\Backup_Folder",
+                    BackupTime = DateTime.Today.ToString("HH:mm"),
+                    ShouldRun = true,
+                    LastBackupTime = DateTime.MinValue,
+                    NextScheduledTime = now
+                };
+                config.Save();
+                return config;
+            }
+
+            var lines = File.ReadAllLines(ConfigPath);
+            // Format safety
+            if (lines.Length != 5)
+                throw new InvalidOperationException("BackupConfig.txt is not valid.");
+
+            return new BackupConfig
+            {
+                BackupPath = lines[0].Trim(),
+                BackupTime = lines[1].Trim(),
+                ShouldRun = bool.Parse(lines[2].Trim()),
+                NextScheduledTime = DateTime.Parse(lines[3].Trim()),
+                LastBackupTime = DateTime.Parse(lines[4].Trim())
+            };
+        }
+        public void Save()
+        {
+            File.WriteAllLines(ConfigPath, new[]
+            {
+            BackupPath,
+            BackupTime,
+            ShouldRun.ToString(),
+            NextScheduledTime.ToString("o"),
+            LastBackupTime.ToString("o")
+        });
+        }
+    }
+    public static class AutoExportHelper
+    {
+        public static async Task CopyFileWithDelayAsync(string backupPath)
+        {
+            string tablePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bookmarks.txt");
+            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string destPath = Path.Combine(backupPath, $"OneNote_bookmarks_{timestamp}.txt");
+
+            try
+            {
+                Directory.CreateDirectory(backupPath);
+                if (!File.Exists(tablePath))
+                    throw new FileNotFoundException("Source file missing", tablePath);
+
+                await Task.Delay(5000); // Delay before backup
+
+                using (var sourceStream = new FileStream(tablePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                using (var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    await sourceStream.CopyToAsync(destStream);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error as needed
+                Console.WriteLine($"Backup failed: {ex}");
+            }
+        }
+
+        public static async Task RunPeriodicCopyAsync(CancellationToken cancellationToken)
+        {
+            var config = BackupConfig.LoadOrCreate();
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var now = DateTime.Now;
+
+                bool missedBackup = now >= config.NextScheduledTime;
+                if (config.ShouldRun && missedBackup)
+                {
+                    await CopyFileWithDelayAsync(config.BackupPath);
+                    config.LastBackupTime = now;
+
+                    // Set NextScheduledTime to next day at BackupTime
+                    var timeParts = config.BackupTime.Split(':');
+                    int hour = int.Parse(timeParts[0]);
+                    int minute = int.Parse(timeParts[1]);
+                    var nextDay = now.Date.AddDays(1).AddHours(hour).AddMinutes(minute);
+                    config.NextScheduledTime = nextDay;
+                    config.Save();
+                }
+                else
+                {
+                    // Wait until next scheduled time or cancellation
+                    var delay = config.NextScheduledTime > now
+                        ? config.NextScheduledTime - now
+                        : TimeSpan.FromMinutes(1);
+                    try
+                    {
+                        await Task.Delay(delay, cancellationToken);
+                    }
+                    catch (TaskCanceledException) { }
+                }
+                // Refresh config in case of external changes
+                config = BackupConfig.LoadOrCreate();
+            }
+        }
+    }
+
 }
+
+
+
+
