@@ -501,23 +501,10 @@ namespace CSOneNoteRibbonAddIn
                 // Ignore errors, use defaults
             }
 
+            // Position form directly to the right of the cursor, no boundary checks
             var cursorPos = Cursor.Position;
-            var screen = Screen.FromPoint(cursorPos);
-
-            int x = cursorPos.X;
+            int x = cursorPos.X + 1; // +1 pixel padding
             int y = cursorPos.Y;
-
-            if (x + formWidth > screen.WorkingArea.Right)
-                x = cursorPos.X - formWidth;
-
-            if (x < screen.WorkingArea.Left)
-                x = screen.WorkingArea.Left;
-
-            if (y < screen.WorkingArea.Top)
-                y = screen.WorkingArea.Top;
-
-            if (y + formHeight > screen.WorkingArea.Bottom)
-                y = screen.WorkingArea.Bottom - formHeight;
 
             form.Size = new Size(formWidth, formHeight);
             form.Location = new Point(x, y);

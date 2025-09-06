@@ -459,28 +459,6 @@ namespace CSOneNoteRibbonAddIn
                 }
             }
         }
-        private List<string> ParseCsv(string csvLine)
-        {
-            // Naive parser: splits on commas not in quotes. For advanced handling, use a CSV library.
-            var fields = new List<string>();
-            bool inQuotes = false;
-            string field = "";
-            foreach (char c in csvLine)
-            {
-                if (c == '"') inQuotes = !inQuotes;
-                else if (c == ',' && !inQuotes)
-                {
-                    fields.Add(field);
-                    field = "";
-                }
-                else
-                {
-                    field += c;
-                }
-            }
-            fields.Add(field);
-            return fields;
-        }
         private void NewFolder_Click(object sender, EventArgs e)
         {
             var currentRow = GetSelectedItem();
@@ -707,7 +685,6 @@ namespace CSOneNoteRibbonAddIn
                 return (null, null, null, null);
             }
         }
-
         private string GetBookmarkName(string scope, string notebookName, string sectionGroupName, string sectionName, string pageName, string paraContent)
         {
             switch (scope)
@@ -726,12 +703,9 @@ namespace CSOneNoteRibbonAddIn
                     return "Unnamed Bookmark";
             }
         }
-
         #endregion
 
         #region List Scope Handlers
-
-        //click will not open if we hold ctrl key
         private void ListScope_Click(object sender, EventArgs e)
         {
             using (MethodTimerLog.Time("ListScope_Click"))
@@ -1524,7 +1498,8 @@ namespace CSOneNoteRibbonAddIn
 
                 // Check if Ctrl key is pressed
                 bool ctrlPressed = (Control.ModifierKeys & Keys.Control) == Keys.Control;
-
+                if (grid.IsCurrentCellInEditMode)
+                    return;
                 if (!ctrlPressed)
                 {
                     if (clickedColumn == "Name" && item.Scope == "URL")
@@ -1553,7 +1528,7 @@ namespace CSOneNoteRibbonAddIn
                         }
                         catch (Exception exNav)
                         {
-                            MessageBox.Show("Failed to open OneNote object: " + exNav.Message);
+                            MessageBox.Show("Failed to open OneNote object");
                         }
                     }
                     else if (clickedColumn == "Name" && item.Type == "Folder")
@@ -1903,8 +1878,8 @@ namespace CSOneNoteRibbonAddIn
         }
         private string KeepAlphaNumericUnderscore(string input)
         {
-            // Only allow A-Z, a-z, 0-9, and _
-            return new string(input.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
+            // Allow A-Z, a-z, 0-9, _, and space
+            return new string(input.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == ' ').ToArray());
         }
         private void RefreshGridDisplay(List<BookmarkItem> flatList = null)
         {
@@ -1978,17 +1953,14 @@ namespace CSOneNoteRibbonAddIn
                     foreach (var item in flatList)
                     {
                         int depth = GetDepth(item);
-                        string bookmarkPath = item.NotebookName;
-                        if (!string.IsNullOrWhiteSpace(item.SectionGroupName))
-                            bookmarkPath += " - " + item.SectionGroupName;
-                        bookmarkPath += " - " + item.SectionName + " - " + item.PageName;
+                        string bookmarkPath = GetBookmarkPath(item);
                         string displayName = item.Name;
 
                         // Add the row with "Name" cell value set to displayName (image will be drawn by CellPainting)
                         int rowIndex = grid.Rows.Add(
                             item.Type,
                             item.Scope,
-                            displayName, // Name column value
+                            displayName, 
                             item.Id,
                             item.OriginalId,
                             item.NotebookName,
@@ -2023,6 +1995,38 @@ namespace CSOneNoteRibbonAddIn
                 }
             }
             
+        }
+        public static string GetBookmarkPath(BookmarkItem item)
+        {
+            // Build path up to selected scope
+            var parts = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(item.NotebookName))
+                parts.Add(item.NotebookName);
+
+            if (item.Scope == "Current Notebook")
+                return string.Join(" - ", parts);
+
+            if (!string.IsNullOrWhiteSpace(item.SectionGroupName))
+                parts.Add(item.SectionGroupName);
+
+            if (item.Scope == "Current Section Group")
+                return string.Join(" - ", parts);
+
+            if (!string.IsNullOrWhiteSpace(item.SectionName))
+                parts.Add(item.SectionName);
+
+            if (item.Scope == "Current Section")
+                return string.Join(" - ", parts);
+
+            if (!string.IsNullOrWhiteSpace(item.PageName))
+                parts.Add(item.PageName);
+
+            if (item.Scope == "Current Page")
+                return string.Join(" - ", parts);
+
+            // For paragraph scope, add all levels + optionally paragraph name
+            return string.Join(" - ", parts);
         }
         #endregion
 
@@ -2102,7 +2106,7 @@ namespace CSOneNoteRibbonAddIn
             base.WndProc(ref m);
         }
         #endregion
-        private class BookmarkItem
+        public class BookmarkItem
         {
             public string Type { get; set; } // "Folder" or "Bookmark"
             public string Scope { get; set; }
@@ -2626,6 +2630,28 @@ namespace CSOneNoteRibbonAddIn
         }
 
         #region SOON TO BE REMOVED
+        private List<string> ParseCsv(string csvLine)
+        {
+            // Naive parser: splits on commas not in quotes. For advanced handling, use a CSV library.
+            var fields = new List<string>();
+            bool inQuotes = false;
+            string field = "";
+            foreach (char c in csvLine)
+            {
+                if (c == '"') inQuotes = !inQuotes;
+                else if (c == ',' && !inQuotes)
+                {
+                    fields.Add(field);
+                    field = "";
+                }
+                else
+                {
+                    field += c;
+                }
+            }
+            fields.Add(field);
+            return fields;
+        }
         public static class Prompt
         {
             public static string ShowDialog(string text, string caption, string defaultText)
