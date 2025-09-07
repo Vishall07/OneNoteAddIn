@@ -21,6 +21,10 @@ namespace CSOneNoteRibbonAddIn
     public class BookMark_Window : Form
     {
         #region Properties
+        private ToolTip gridDropToolTip = new ToolTip();
+        private int lastDropToolTipRowIndex = -1;
+        private string lastZoneText = null;
+        private DataGridViewRow _dragHoverRow = null;
         private ContextMenuStrip columnHeaderContextMenu;
         private DataGridViewColumn clickedColumnHeader;
         private Label label;
@@ -255,62 +259,57 @@ namespace CSOneNoteRibbonAddIn
             string newSectionColor,
             string newPageName,
             string newParaContent)
+            {
+                selectedId = newSelectedId;
+                selectedScope = newSelectedScope;
+                selectedText = newSelectedText;
+                notebookName = newNotebookName;
+                notebookColor = newNotebookColor;
+                sectionGroupName = newSectionGroupName;
+                sectionName = newSectionName;
+                sectionColor = newSectionColor;
+                pageName = newPageName;
+                paraContent = newParaContent;
+
+                if (label != null)
                 {
-                    selectedId = newSelectedId;
-                    selectedScope = newSelectedScope;
-                    selectedText = newSelectedText;
-
-                    notebookName = newNotebookName;
-                    notebookColor = newNotebookColor;
-                    sectionGroupName = newSectionGroupName;
-                    sectionName = newSectionName;
-                    sectionColor = newSectionColor;
-                    pageName = newPageName;
-                    paraContent = newParaContent;
-
-                    if (label != null)
-                    {
-                        label.Text = selectedText ?? "No Selection";
-                    }
-
-                    if (comboScope != null)
-                    {
-                        int index = comboScope.FindStringExact(selectedScope);
-                        comboScope.SelectedIndex = (index >= 0) ? index : -1;
-                    }
-
-                    if (labelNotebook != null)
-                    {
-                        labelNotebook.Text = $"Notebook: {notebookName ?? "N/A"} [{notebookColor ?? "No Color"}]";
-                    }
-                    if (labelSection != null)
-                    {
-                        labelSection.Text = $"Section: {sectionName ?? "N/A"} [{sectionColor ?? "No Color"}] | Group: {sectionGroupName ?? "N/A"}";
-                    }
-                    if (labelPage != null)
-                    {
-                        labelPage.Text = $"Page: {pageName ?? "N/A"}";
-                    }
-                    if (labelPara != null)
-                    {
-                        labelPara.Text = $"Paragraph: {paraContent ?? "N/A"}";
-                    }
-
-                    // Decide what list to show:
-                    if (cachedList == null)
-                        RefreshGridDisplay();
-                    else
-                        RefreshGridDisplay(cachedList);
-
-                    if (btnSave != null)
-                    {
-                        btnSave.Enabled = !string.IsNullOrEmpty(selectedId);
-                    }
-                    if (btnDelete != null)
-                    {
-                        btnDelete.Enabled = grid.SelectedRows.Count > 0;
-                    }
+                    label.Text = selectedText ?? "No Selection";
                 }
+                if (comboScope != null)
+                {
+                    int index = comboScope.FindStringExact(selectedScope);
+                    comboScope.SelectedIndex = (index >= 0) ? index : -1;
+                }
+                if (labelNotebook != null)
+                {
+                    labelNotebook.Text = $"Notebook: {notebookName ?? "N/A"} [{notebookColor ?? "No Color"}]";
+                }
+                if (labelSection != null)
+                {
+                    labelSection.Text = $"Section: {sectionName ?? "N/A"} [{sectionColor ?? "No Color"}] | Group: {sectionGroupName ?? "N/A"}";
+                }
+                if (labelPage != null)
+                {
+                    labelPage.Text = $"Page: {pageName ?? "N/A"}";
+                }
+                if (labelPara != null)
+                {
+                    labelPara.Text = $"Paragraph: {paraContent ?? "N/A"}";
+                }
+                if (cachedList == null)
+                    RefreshGridDisplay();
+                else
+                    RefreshGridDisplay(cachedList);
+
+                if (btnSave != null)
+                {
+                    btnSave.Enabled = !string.IsNullOrEmpty(selectedId);
+                }
+                if (btnDelete != null)
+                {
+                    btnDelete.Enabled = grid.SelectedRows.Count > 0;
+                }
+        }
         #endregion
 
         #region CONTEXT MENU HANDLERS   
@@ -1303,17 +1302,84 @@ namespace CSOneNoteRibbonAddIn
         }
         private void Grid_DragOver(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(typeof(string)))
+            var clientPoint = grid.PointToClient(new Point(e.X, e.Y));
+            var hit = grid.HitTest(clientPoint.X, clientPoint.Y);
+
+            if (e.Data.GetDataPresent(typeof(string)) && hit.RowIndex >= 0)
             {
                 e.Effect = DragDropEffects.Move;
+
+                // Highlight the hovered row
+                if (_dragHoverRow == null || _dragHoverRow.Index != hit.RowIndex)
+                {
+                    // Remove previous highlight
+                    if (_dragHoverRow != null)
+                    {
+                        _dragHoverRow.DefaultCellStyle.BackColor = grid.DefaultCellStyle.BackColor;
+                        _dragHoverRow.DefaultCellStyle.ForeColor = grid.DefaultCellStyle.ForeColor;
+                    }
+
+                    _dragHoverRow = grid.Rows[hit.RowIndex];
+                    _dragHoverRow.DefaultCellStyle.BackColor = Color.LightSkyBlue; // Highlight color
+                    _dragHoverRow.DefaultCellStyle.ForeColor = Color.Black;
+                }
+
+                // Existing tooltip logic unchanged
+                Rectangle rowRect = grid.GetRowDisplayRectangle(hit.RowIndex, false);
+                int rowHeight = rowRect.Height;
+                int relativeY = clientPoint.Y - rowRect.Top;
+                double dropPositionRatio = (double)relativeY / rowHeight;
+
+                string zoneText;
+                if (dropPositionRatio <= 0.15)
+                    zoneText = "Above";
+                else if (dropPositionRatio >= 0.55)
+                    zoneText = "Below";
+                else
+                    zoneText = "Inside";
+
+                if (lastDropToolTipRowIndex != hit.RowIndex || lastZoneText != zoneText)
+                {
+                    lastDropToolTipRowIndex = hit.RowIndex;
+                    lastZoneText = zoneText;
+
+                    Point rowLocation = grid.PointToScreen(new Point(rowRect.Left + 20, rowRect.Top + rowRect.Height / 2));
+                    gridDropToolTip.Show(zoneText, this, this.PointToClient(rowLocation), 5000);
+                }
             }
             else
             {
                 e.Effect = DragDropEffects.None;
+
+                // Remove highlight if not hovering over a valid row
+                if (_dragHoverRow != null)
+                {
+                    _dragHoverRow.DefaultCellStyle.BackColor = grid.DefaultCellStyle.BackColor;
+                    _dragHoverRow.DefaultCellStyle.ForeColor = grid.DefaultCellStyle.ForeColor;
+                    _dragHoverRow = null;
+                }
+
+                gridDropToolTip.Hide(this);
+                lastDropToolTipRowIndex = -1;
+                lastZoneText = null;
             }
         }
+
+
         private void Grid_DragDrop(object sender, DragEventArgs e)
         {
+            // Remove highlight row style
+            if (_dragHoverRow != null)
+            {
+                _dragHoverRow.DefaultCellStyle.BackColor = grid.DefaultCellStyle.BackColor;
+                _dragHoverRow.DefaultCellStyle.ForeColor = grid.DefaultCellStyle.ForeColor;
+                _dragHoverRow = null;
+            }
+
+            gridDropToolTip.Hide(this);
+            lastDropToolTipRowIndex = -1;
+            lastZoneText = null;
+
             if (!e.Data.GetDataPresent(typeof(string))) return;
             string draggedData = (string)e.Data.GetData(typeof(string));
             var draggedIds = draggedData.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
