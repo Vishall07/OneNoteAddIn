@@ -300,7 +300,7 @@ namespace CSOneNoteRibbonAddIn
                     RefreshGridDisplay();
                 else
                     RefreshGridDisplay(cachedList);
-
+                UpdateListScopeItems(); 
                 if (btnSave != null)
                 {
                     btnSave.Enabled = !string.IsNullOrEmpty(selectedId);
@@ -793,17 +793,15 @@ namespace CSOneNoteRibbonAddIn
                         MessageBox.Show("No bookmark selected to save.");
                         return;
                     }
-                    UpdateBookmarkInfo(
-                                selectedId, selectedScope, displayText,
-                                notebookName, notebookColor,
-                                sectionGroupName, sectionName, sectionColor,
-                                pageName, paraContent);
-
-
+                    //UpdateBookmarkInfo(
+                    //            selectedId, selectedScope, displayText,
+                    //            notebookName, notebookColor,
+                    //            sectionGroupName, sectionName, sectionColor,
+                    //            pageName, paraContent);
                     string bookmarkName;
                     string selected = listScope.SelectedItem.ToString();
-
-                    switch (selected)
+                    string scopeKey = selected.Split(':')[0].Trim();
+                    switch (scopeKey)
                     {
                         case "Current Paragraph":
                             bookmarkName = paraContent ?? "Unnamed Paragraph";
@@ -828,7 +826,7 @@ namespace CSOneNoteRibbonAddIn
                             break;
                     }
 
-                    var newBookmark = new BookmarkItem { Type = "Bookmark", Scope = selected, Name = bookmarkName?.Replace("\r", " ").Replace("\n", " "), ParentId = null, Id = selectedId + "_" + Guid.NewGuid().ToString(), OriginalId = selectedId, NotebookName = notebookName?.Replace("\r", " ").Replace("\n", " "), NotebookColor = notebookColor, SectionGroupName = sectionGroupName?.Replace("\r", " ").Replace("\n", " "), SectionName = sectionName?.Replace("\r", " ").Replace("\n", " "), SectionColor = sectionColor, PageName = pageName?.Replace("\r", " ").Replace("\n", " "), ParaContent = paraContent?.Replace("\r", " ").Replace("\n", " "), Notes = "" };
+                    var newBookmark = new BookmarkItem { Type = "Bookmark", Scope = scopeKey, Name = bookmarkName?.Replace("\r", " ").Replace("\n", " "), ParentId = null, Id = selectedId + "_" + Guid.NewGuid().ToString(), OriginalId = selectedId, NotebookName = notebookName?.Replace("\r", " ").Replace("\n", " "), NotebookColor = notebookColor, SectionGroupName = sectionGroupName?.Replace("\r", " ").Replace("\n", " "), SectionName = sectionName?.Replace("\r", " ").Replace("\n", " "), SectionColor = sectionColor, PageName = pageName?.Replace("\r", " ").Replace("\n", " "), ParaContent = paraContent?.Replace("\r", " ").Replace("\n", " "), Notes = "" };
 
                     items.Insert(0, newBookmark);
                     SaveToFile();
@@ -983,6 +981,81 @@ namespace CSOneNoteRibbonAddIn
         #endregion
 
         #region HELPERS
+        private void UpdateListScopeItems()
+        {
+            try
+            {
+                var oneNoteApp = new OneNote.Application();
+                var currentWindow = oneNoteApp.Windows.CurrentWindow;
+
+                // Get IDs and links
+                string notebookId = currentWindow.CurrentNotebookId;
+                oneNoteApp.GetHyperlinkToObject(notebookId, null, out string notebookLink);
+
+                string sectionGroupId = currentWindow.CurrentSectionGroupId;
+                string sectionGroupLink = null;
+                if (!string.IsNullOrEmpty(sectionGroupId))
+                {
+                    oneNoteApp.GetHyperlinkToObject(sectionGroupId, null, out sectionGroupLink);
+                }
+
+                string sectionId = currentWindow.CurrentSectionId;
+                oneNoteApp.GetHyperlinkToObject(sectionId, null, out string sectionLink);
+
+                // Helper function to extract last part from URL
+                string GetLastPathPart(string url)
+                {
+                    if (string.IsNullOrEmpty(url))
+                        return null;
+
+                    string trimmed = url.TrimEnd('/', '\\');
+                    if (trimmed.StartsWith("onenote:", StringComparison.OrdinalIgnoreCase))
+                        trimmed = trimmed.Substring("onenote:".Length);
+
+                    string[] parts = trimmed.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                    return parts.Length > 0 ? System.Net.WebUtility.UrlDecode(parts[parts.Length - 1]) : null;
+                }
+
+                string notebookName = GetLastPathPart(notebookLink) ?? "Unnamed Notebook";
+                string sectionGroupName = !string.IsNullOrEmpty(sectionGroupLink) ? GetLastPathPart(sectionGroupLink) : "No Section Group";
+                string sectionName = null;
+                if (!string.IsNullOrEmpty(sectionLink))
+                {
+                    int pathEnd = sectionLink.IndexOf(".one", StringComparison.OrdinalIgnoreCase);
+                    if (pathEnd > -1)
+                    {
+                        string upToExt = sectionLink.Substring(0, pathEnd);
+                        string[] parts = upToExt.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (parts.Length > 0)
+                        {
+                            sectionName = System.Net.WebUtility.UrlDecode(parts[parts.Length - 1]);
+                        }
+                    }
+                }
+
+                var model = GetCurrentNotebookModel(oneNoteApp);
+                if (model == null)
+                    return;
+
+                string pageName = model.Page?.Name ?? "Unnamed Page";
+                string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "Unnamed Paragraph";
+
+                // Update the list items dynamically
+                listScope.Items.Clear();
+                listScope.Items.Add($"Current Notebook : {notebookName}");
+                listScope.Items.Add($"Current Section Group : {sectionGroupName}");
+                listScope.Items.Add($"Current Section : {sectionName ?? "Unnamed Section"}");
+                listScope.Items.Add($"Current Page : {pageName}");
+                listScope.Items.Add($"Current Paragraph : {paraContent}");
+
+                // Optionally select the first item
+                listScope.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error updating list scope items: {ex.Message}");
+            }
+        }
         public AddInModel GetCurrentNotebookModel(OneNote.Application oneNoteApp)
         {
             using (MethodTimerLog.Time("GetCurrentNotebookModel"))
