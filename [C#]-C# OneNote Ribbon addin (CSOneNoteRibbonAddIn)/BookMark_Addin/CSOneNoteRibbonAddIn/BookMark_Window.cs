@@ -793,11 +793,7 @@ namespace CSOneNoteRibbonAddIn
                         MessageBox.Show("No bookmark selected to save.");
                         return;
                     }
-                    //UpdateBookmarkInfo(
-                    //            selectedId, selectedScope, displayText,
-                    //            notebookName, notebookColor,
-                    //            sectionGroupName, sectionName, sectionColor,
-                    //            pageName, paraContent);
+
                     string bookmarkName;
                     string selected = listScope.SelectedItem.ToString();
                     string scopeKey = selected.Split(':')[0].Trim();
@@ -1147,38 +1143,72 @@ namespace CSOneNoteRibbonAddIn
             {
                 string pageXml;
                 oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
-
                 var doc = new System.Xml.XmlDocument();
                 doc.LoadXml(pageXml);
-
                 var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
                 nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
 
-                // First try: get the paragraph that was last selected
-                var selectedParaNode = doc.SelectSingleNode("//one:OE[@selected]/one:T", nsmgr);
+                string paraContent = null;
+                string paraId = null;  // Optionally track paragraph id
 
-                // Fallback: if nothing selected, take the first paragraph
-                if (selectedParaNode == null)
+                var selectedParagraphOE = doc.SelectSingleNode("//one:OE[@selected]", nsmgr);
+
+                if (selectedParagraphOE != null)
                 {
-                    selectedParaNode = doc.SelectSingleNode("//one:Outline/one:OEChildren/one:OE/one:T", nsmgr);
+                    // Try get selected text inside the selected paragraph
+                    var selectedTextNodes = selectedParagraphOE.SelectNodes(".//one:T[@selected]", nsmgr);
+                    if (selectedTextNodes != null && selectedTextNodes.Count > 0)
+                    {
+                        paraContent = string.Join("", selectedTextNodes
+                            .Cast<System.Xml.XmlNode>()
+                            .Select(n => n.InnerText?.Trim())
+                            .Where(t => !string.IsNullOrEmpty(t)));
+                    }
+
+                    // If no selected text or empty, get full text of selected paragraph
+                    if (string.IsNullOrEmpty(paraContent))
+                    {
+                        var allTextNodes = selectedParagraphOE.SelectNodes(".//one:T", nsmgr);
+                        paraContent = string.Join("", allTextNodes
+                            .Cast<System.Xml.XmlNode>()
+                            .Select(n => n.InnerText?.Trim())
+                            .Where(t => !string.IsNullOrEmpty(t)));
+                    }
+
+                    paraId = selectedParagraphOE.Attributes?["objectID"]?.Value;
                 }
 
-                if (selectedParaNode != null)
+                if (string.IsNullOrEmpty(paraContent))
                 {
-                    string paraText = selectedParaNode.InnerText?.Trim();
-                    if (!string.IsNullOrEmpty(paraText))
+                    // No paragraph selected or no text found, fallback to first paragraph in page
+                    var firstParaNode = doc.SelectSingleNode("//one:Outline/one:OEChildren/one:OE", nsmgr);
+                    if (firstParaNode != null)
                     {
-                        page.Paragraphs.Add(new ParagraphModel
+                        var firstParaTextNodes = firstParaNode.SelectNodes(".//one:T", nsmgr);
+                        if (firstParaTextNodes != null && firstParaTextNodes.Count > 0)
                         {
-                            Id = page.Id + "_selected",
-                            Name = paraText
-                        });
+                            paraContent = string.Join("", firstParaTextNodes
+                                .Cast<System.Xml.XmlNode>()
+                                .Select(n => n.InnerText?.Trim())
+                                .Where(t => !string.IsNullOrEmpty(t)));
+                        }
+                        paraId = firstParaNode.Attributes?["objectID"]?.Value;
                     }
+                }
+
+                if (!string.IsNullOrEmpty(paraContent))
+                {
+                    page.Paragraphs.Add(new ParagraphModel
+                    {
+                        Id = paraId ?? (page.Id + "_para"),
+                        Name = paraContent
+                    });
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 throw;
             }
         }
