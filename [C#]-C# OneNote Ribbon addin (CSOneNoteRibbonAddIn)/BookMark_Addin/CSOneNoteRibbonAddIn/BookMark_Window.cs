@@ -1036,13 +1036,14 @@ namespace CSOneNoteRibbonAddIn
                 string pageName = model.Page?.Name ?? "Unnamed Page";
                 string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "Unnamed Paragraph";
 
+                listScope.Font = new Font("Consolas", 12); 
                 // Update the list items dynamically
                 listScope.Items.Clear();
-                listScope.Items.Add($"Current Notebook : {notebookName}");
+                listScope.Items.Add($"Current Notebook      : {notebookName}");
                 listScope.Items.Add($"Current Section Group : {sectionGroupName}");
-                listScope.Items.Add($"Current Section : {sectionName ?? "Unnamed Section"}");
-                listScope.Items.Add($"Current Page : {pageName}");
-                listScope.Items.Add($"Current Paragraph : {paraContent}");
+                listScope.Items.Add($"Current Section       : {sectionName ?? "Unnamed Section"}");
+                listScope.Items.Add($"Current Page          : {pageName}");
+                listScope.Items.Add($"Current Paragraph     : {paraContent}");
 
                 // Optionally select the first item
                 listScope.SelectedIndex = 0;
