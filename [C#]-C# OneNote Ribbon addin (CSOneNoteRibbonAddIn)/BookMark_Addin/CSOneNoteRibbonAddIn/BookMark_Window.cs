@@ -1474,8 +1474,6 @@ namespace CSOneNoteRibbonAddIn
                 lastZoneText = null;
             }
         }
-
-
         private void Grid_DragDrop(object sender, DragEventArgs e)
         {
             // Remove highlight row style
@@ -2031,13 +2029,7 @@ namespace CSOneNoteRibbonAddIn
                 }
                 else if (colName == "Name")
                 {
-                    var newName = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString();
-                    //// Step 1: Remove icons and indent spaces
-                    //string cleanName = RemoveIconsFromName(newName);
-
-                    // Step 2: Keep only alphanumeric + underscore
-                    //string cleanName = KeepAlphaNumericUnderscore(newName);
-                    
+                    var newName = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString();    
                     if (!string.IsNullOrEmpty(newName) && newName != item.Name)
                     {
                         item.Name = newName;
@@ -2052,11 +2044,6 @@ namespace CSOneNoteRibbonAddIn
                 System.Diagnostics.Debug.WriteLine($"Error updating cell value: {ex.Message}");
             }
         }
-        //private string KeepAlphaNumericUnderscore(string input)
-        //{
-        //    // Allow A-Z, a-z, 0-9, _, and space
-        //    return new string(input.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == ' ').ToArray());
-        //}
         private void RefreshGridDisplay(List<BookmarkItem> flatList = null)
         {
             using (MethodTimerLog.Time("RefreshGridDisplay"))
