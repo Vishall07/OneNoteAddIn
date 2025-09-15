@@ -979,79 +979,82 @@ namespace CSOneNoteRibbonAddIn
         #region HELPERS
         private void UpdateListScopeItems()
         {
-            try
+            using (MethodTimerLog.Time("UpdateListScopeItems"))
             {
-                var oneNoteApp = new OneNote.Application();
-                var currentWindow = oneNoteApp.Windows.CurrentWindow;
-
-                // Get IDs and links
-                string notebookId = currentWindow.CurrentNotebookId;
-                oneNoteApp.GetHyperlinkToObject(notebookId, null, out string notebookLink);
-
-                string sectionGroupId = currentWindow.CurrentSectionGroupId;
-                string sectionGroupLink = null;
-                if (!string.IsNullOrEmpty(sectionGroupId))
+                try
                 {
-                    oneNoteApp.GetHyperlinkToObject(sectionGroupId, null, out sectionGroupLink);
-                }
+                    var oneNoteApp = new OneNote.Application();
+                    var currentWindow = oneNoteApp.Windows.CurrentWindow;
 
-                string sectionId = currentWindow.CurrentSectionId;
-                oneNoteApp.GetHyperlinkToObject(sectionId, null, out string sectionLink);
+                    // Get IDs and links
+                    string notebookId = currentWindow.CurrentNotebookId;
+                    oneNoteApp.GetHyperlinkToObject(notebookId, null, out string notebookLink);
 
-                // Helper function to extract last part from URL
-                string GetLastPathPart(string url)
-                {
-                    if (string.IsNullOrEmpty(url))
-                        return null;
-
-                    string trimmed = url.TrimEnd('/', '\\');
-                    if (trimmed.StartsWith("onenote:", StringComparison.OrdinalIgnoreCase))
-                        trimmed = trimmed.Substring("onenote:".Length);
-
-                    string[] parts = trimmed.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-                    return parts.Length > 0 ? System.Net.WebUtility.UrlDecode(parts[parts.Length - 1]) : null;
-                }
-
-                string notebookName = GetLastPathPart(notebookLink) ?? "Unnamed Notebook";
-                string sectionGroupName = !string.IsNullOrEmpty(sectionGroupLink) ? GetLastPathPart(sectionGroupLink) : "No Section Group";
-                string sectionName = null;
-                if (!string.IsNullOrEmpty(sectionLink))
-                {
-                    int pathEnd = sectionLink.IndexOf(".one", StringComparison.OrdinalIgnoreCase);
-                    if (pathEnd > -1)
+                    string sectionGroupId = currentWindow.CurrentSectionGroupId;
+                    string sectionGroupLink = null;
+                    if (!string.IsNullOrEmpty(sectionGroupId))
                     {
-                        string upToExt = sectionLink.Substring(0, pathEnd);
-                        string[] parts = upToExt.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length > 0)
+                        oneNoteApp.GetHyperlinkToObject(sectionGroupId, null, out sectionGroupLink);
+                    }
+
+                    string sectionId = currentWindow.CurrentSectionId;
+                    oneNoteApp.GetHyperlinkToObject(sectionId, null, out string sectionLink);
+
+                    // Helper function to extract last part from URL
+                    string GetLastPathPart(string url)
+                    {
+                        if (string.IsNullOrEmpty(url))
+                            return null;
+
+                        string trimmed = url.TrimEnd('/', '\\');
+                        if (trimmed.StartsWith("onenote:", StringComparison.OrdinalIgnoreCase))
+                            trimmed = trimmed.Substring("onenote:".Length);
+
+                        string[] parts = trimmed.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                        return parts.Length > 0 ? System.Net.WebUtility.UrlDecode(parts[parts.Length - 1]) : null;
+                    }
+
+                    string notebookName = GetLastPathPart(notebookLink) ?? "Unnamed Notebook";
+                    string sectionGroupName = !string.IsNullOrEmpty(sectionGroupLink) ? GetLastPathPart(sectionGroupLink) : "No Section Group";
+                    string sectionName = null;
+                    if (!string.IsNullOrEmpty(sectionLink))
+                    {
+                        int pathEnd = sectionLink.IndexOf(".one", StringComparison.OrdinalIgnoreCase);
+                        if (pathEnd > -1)
                         {
-                            sectionName = System.Net.WebUtility.UrlDecode(parts[parts.Length - 1]);
+                            string upToExt = sectionLink.Substring(0, pathEnd);
+                            string[] parts = upToExt.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                            if (parts.Length > 0)
+                            {
+                                sectionName = System.Net.WebUtility.UrlDecode(parts[parts.Length - 1]);
+                            }
                         }
                     }
+
+                    var model = GetCurrentNotebookModel(oneNoteApp);
+                    if (model == null)
+                        return;
+
+                    string pageName = model.Page?.Name ?? "Unnamed Page";
+                    string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "Unnamed Paragraph";
+
+                    listScope.Font = new Font("Consolas", 12);
+                    // Update the list items dynamically
+                    listScope.Items.Clear();
+                    listScope.Items.Add($"Current Notebook      : {notebookName}");
+                    listScope.Items.Add($"Current Section Group : {sectionGroupName}");
+                    listScope.Items.Add($"Current Section       : {sectionName ?? "Unnamed Section"}");
+                    listScope.Items.Add($"Current Page          : {pageName}");
+                    listScope.Items.Add($"Current Paragraph     : {paraContent}");
+
+                    // Optionally select the first item
+                    listScope.SelectedIndex = 0;
                 }
-
-                var model = GetCurrentNotebookModel(oneNoteApp);
-                if (model == null)
-                    return;
-
-                string pageName = model.Page?.Name ?? "Unnamed Page";
-                string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "Unnamed Paragraph";
-
-                listScope.Font = new Font("Consolas", 12); 
-                // Update the list items dynamically
-                listScope.Items.Clear();
-                listScope.Items.Add($"Current Notebook      : {notebookName}");
-                listScope.Items.Add($"Current Section Group : {sectionGroupName}");
-                listScope.Items.Add($"Current Section       : {sectionName ?? "Unnamed Section"}");
-                listScope.Items.Add($"Current Page          : {pageName}");
-                listScope.Items.Add($"Current Paragraph     : {paraContent}");
-
-                // Optionally select the first item
-                listScope.SelectedIndex = 0;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error updating list scope items: {ex.Message}");
-            }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error updating list scope items: {ex.Message}");
+                }
+            } 
         }
         public AddInModel GetCurrentNotebookModel(OneNote.Application oneNoteApp)
         {
@@ -1140,78 +1143,81 @@ namespace CSOneNoteRibbonAddIn
         }
         private void LoadParagraphs(OneNote.Application oneNoteApp, PageModel page)
         {
-            try
+            using (MethodTimerLog.Time("LoadParagraphs"))
             {
-                string pageXml;
-                oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
-                var doc = new System.Xml.XmlDocument();
-                doc.LoadXml(pageXml);
-                var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
-                nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
-
-                string paraContent = null;
-                string paraId = null;  // Optionally track paragraph id
-
-                var selectedParagraphOE = doc.SelectSingleNode("//one:OE[@selected]", nsmgr);
-
-                if (selectedParagraphOE != null)
+                try
                 {
-                    // Try get selected text inside the selected paragraph
-                    var selectedTextNodes = selectedParagraphOE.SelectNodes(".//one:T[@selected]", nsmgr);
-                    if (selectedTextNodes != null && selectedTextNodes.Count > 0)
-                    {
-                        paraContent = string.Join("", selectedTextNodes
-                            .Cast<System.Xml.XmlNode>()
-                            .Select(n => n.InnerText?.Trim())
-                            .Where(t => !string.IsNullOrEmpty(t)));
-                    }
+                    string pageXml;
+                    oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
+                    var doc = new System.Xml.XmlDocument();
+                    doc.LoadXml(pageXml);
+                    var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
+                    nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
 
-                    // If no selected text or empty, get full text of selected paragraph
-                    if (string.IsNullOrEmpty(paraContent))
-                    {
-                        var allTextNodes = selectedParagraphOE.SelectNodes(".//one:T", nsmgr);
-                        paraContent = string.Join("", allTextNodes
-                            .Cast<System.Xml.XmlNode>()
-                            .Select(n => n.InnerText?.Trim())
-                            .Where(t => !string.IsNullOrEmpty(t)));
-                    }
+                    string paraContent = null;
+                    string paraId = null;  // Optionally track paragraph id
 
-                    paraId = selectedParagraphOE.Attributes?["objectID"]?.Value;
-                }
+                    var selectedParagraphOE = doc.SelectSingleNode("//one:OE[@selected]", nsmgr);
 
-                if (string.IsNullOrEmpty(paraContent))
-                {
-                    // No paragraph selected or no text found, fallback to first paragraph in page
-                    var firstParaNode = doc.SelectSingleNode("//one:Outline/one:OEChildren/one:OE", nsmgr);
-                    if (firstParaNode != null)
+                    if (selectedParagraphOE != null)
                     {
-                        var firstParaTextNodes = firstParaNode.SelectNodes(".//one:T", nsmgr);
-                        if (firstParaTextNodes != null && firstParaTextNodes.Count > 0)
+                        // Try get selected text inside the selected paragraph
+                        var selectedTextNodes = selectedParagraphOE.SelectNodes(".//one:T[@selected]", nsmgr);
+                        if (selectedTextNodes != null && selectedTextNodes.Count > 0)
                         {
-                            paraContent = string.Join("", firstParaTextNodes
+                            paraContent = string.Join("", selectedTextNodes
                                 .Cast<System.Xml.XmlNode>()
                                 .Select(n => n.InnerText?.Trim())
                                 .Where(t => !string.IsNullOrEmpty(t)));
                         }
-                        paraId = firstParaNode.Attributes?["objectID"]?.Value;
+
+                        // If no selected text or empty, get full text of selected paragraph
+                        if (string.IsNullOrEmpty(paraContent))
+                        {
+                            var allTextNodes = selectedParagraphOE.SelectNodes(".//one:T", nsmgr);
+                            paraContent = string.Join("", allTextNodes
+                                .Cast<System.Xml.XmlNode>()
+                                .Select(n => n.InnerText?.Trim())
+                                .Where(t => !string.IsNullOrEmpty(t)));
+                        }
+
+                        paraId = selectedParagraphOE.Attributes?["objectID"]?.Value;
+                    }
+
+                    if (string.IsNullOrEmpty(paraContent))
+                    {
+                        // No paragraph selected or no text found, fallback to first paragraph in page
+                        var firstParaNode = doc.SelectSingleNode("//one:Outline/one:OEChildren/one:OE", nsmgr);
+                        if (firstParaNode != null)
+                        {
+                            var firstParaTextNodes = firstParaNode.SelectNodes(".//one:T", nsmgr);
+                            if (firstParaTextNodes != null && firstParaTextNodes.Count > 0)
+                            {
+                                paraContent = string.Join("", firstParaTextNodes
+                                    .Cast<System.Xml.XmlNode>()
+                                    .Select(n => n.InnerText?.Trim())
+                                    .Where(t => !string.IsNullOrEmpty(t)));
+                            }
+                            paraId = firstParaNode.Attributes?["objectID"]?.Value;
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(paraContent))
+                    {
+                        page.Paragraphs.Add(new ParagraphModel
+                        {
+                            Id = paraId ?? (page.Id + "_para"),
+                            Name = paraContent
+                        });
                     }
                 }
-
-                if (!string.IsNullOrEmpty(paraContent))
+                catch (Exception ex)
                 {
-                    page.Paragraphs.Add(new ParagraphModel
-                    {
-                        Id = paraId ?? (page.Id + "_para"),
-                        Name = paraContent
-                    });
+                    MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}",
+                        "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    throw;
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading paragraphs for page {page.Name}: {ex.Message}",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                throw;
-            }
+            }      
         }
         private List<BookmarkItem> FlattenForDisplay(string parentId, int depth)
         {
@@ -2030,11 +2036,11 @@ namespace CSOneNoteRibbonAddIn
                     //string cleanName = RemoveIconsFromName(newName);
 
                     // Step 2: Keep only alphanumeric + underscore
-                    string cleanName = KeepAlphaNumericUnderscore(newName);
+                    //string cleanName = KeepAlphaNumericUnderscore(newName);
                     
-                    if (!string.IsNullOrEmpty(cleanName) && cleanName != item.Name)
+                    if (!string.IsNullOrEmpty(newName) && newName != item.Name)
                     {
-                        item.Name = cleanName;
+                        item.Name = newName;
                         SaveToFile();
                         cachedList = null;
                     }
@@ -2046,11 +2052,11 @@ namespace CSOneNoteRibbonAddIn
                 System.Diagnostics.Debug.WriteLine($"Error updating cell value: {ex.Message}");
             }
         }
-        private string KeepAlphaNumericUnderscore(string input)
-        {
-            // Allow A-Z, a-z, 0-9, _, and space
-            return new string(input.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == ' ').ToArray());
-        }
+        //private string KeepAlphaNumericUnderscore(string input)
+        //{
+        //    // Allow A-Z, a-z, 0-9, _, and space
+        //    return new string(input.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == ' ').ToArray());
+        //}
         private void RefreshGridDisplay(List<BookmarkItem> flatList = null)
         {
             using (MethodTimerLog.Time("RefreshGridDisplay"))
