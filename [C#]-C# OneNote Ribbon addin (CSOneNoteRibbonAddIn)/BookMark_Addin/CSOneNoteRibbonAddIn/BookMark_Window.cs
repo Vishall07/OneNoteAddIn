@@ -780,14 +780,14 @@ namespace CSOneNoteRibbonAddIn
                     // Extract data from your model
                     string selectedId = model.Page?.Id ?? "";
                     string selectedScope = "page";
-                    string displayText = model.Page?.Name ?? "";
-                    string notebookName = notebookNames ?? "";
+                    string displayText = model.Page?.Name?.Replace(",", "") ?? "";
+                    string notebookName = notebookNames?.Replace(",", "") ?? "";
                     string notebookColor = model.NotebookColor ?? "";
-                    string sectionGroupName = sectionGroupNames ?? "No Section Group";
-                    string sectionName = sectionNames ?? "";
+                    string sectionGroupName = sectionGroupNames?.Replace(",", "") ?? "No Section Group";
+                    string sectionName = sectionNames?.Replace(",", "") ?? "";
                     string sectionColor = model.Section?.Color ?? "";
-                    string pageName = model.Page.Name ?? "";
-                    string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "";
+                    string pageName = model.Page.Name?.Replace(",", "") ?? "";
+                    string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name?.Replace(",", "") ?? "";
 
                     if (string.IsNullOrEmpty(selectedId))
                     {
@@ -955,7 +955,7 @@ namespace CSOneNoteRibbonAddIn
                     EscapeCsv(i.SectionColor),
                     EscapeCsv(i.PageName),
                     EscapeCsv(i.ParaContent),
-                    EscapeCsv(i.Notes ?? ""),
+                    EscapeCsv(i.Notes?.Replace(",", "") ?? ""),
                     i.IsExpanded ? "1" : "0",
                     i.SortOrder.ToString()
                 })).ToList();
@@ -1535,6 +1535,7 @@ namespace CSOneNoteRibbonAddIn
                                 .ToList();
                 insertIndex = siblings.FindIndex(i => i.Id == targetId);
                 if (insertIndex < 0) insertIndex = siblings.Count;
+                insertIndex++;
             }
             // ---- MIDDLE ZONE ON ANY ITEM ----
             else
