@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using OneNote = Microsoft.Office.Interop.OneNote;
 #endregion
 
@@ -1054,7 +1055,7 @@ namespace CSOneNoteRibbonAddIn
                 {
                     MessageBox.Show($"Error updating list scope items: {ex.Message}");
                 }
-            } 
+            }
         }
         public AddInModel GetCurrentNotebookModel(OneNote.Application oneNoteApp)
         {
@@ -1348,13 +1349,11 @@ namespace CSOneNoteRibbonAddIn
                 if (item == null) return;
 
                 string clickedColumn = grid.Columns[e.ColumnIndex].Name;
-
                 if (clickedColumn == "Name")
                 {
-                    grid.Rows[e.RowIndex].Cells["Name"].ReadOnly = false;
-                    grid.BeginEdit(true);
+                    return;
                 }
-                else if (clickedColumn == "Notes")
+                if (clickedColumn == "Notes")
                 {
                     grid.Rows[e.RowIndex].Cells["Notes"].ReadOnly = false;
                     grid.BeginEdit(true);
@@ -1536,7 +1535,6 @@ namespace CSOneNoteRibbonAddIn
                                 .ToList();
                 insertIndex = siblings.FindIndex(i => i.Id == targetId);
                 if (insertIndex < 0) insertIndex = siblings.Count;
-                insertIndex++; // after target
             }
             // ---- MIDDLE ZONE ON ANY ITEM ----
             else
@@ -1551,7 +1549,7 @@ namespace CSOneNoteRibbonAddIn
             // Remove dragged items from old location (avoid duplications)
             foreach (var did in draggedIds)
                 siblings.RemoveAll(i => i.Id == did);
-
+                
             // Insert at the calculated position
             foreach (var did in draggedIds)
             {
@@ -1561,14 +1559,16 @@ namespace CSOneNoteRibbonAddIn
                     item.ParentId = parentId;
                     siblings.Insert(insertIndex++, item);
                 }
+                else
+                {
+                    MessageBox.Show("item is NUll");
+                }
             }
 
             // Update sort orders
             for (int i = 0; i < siblings.Count; i++)
-            {
                 siblings[i].SortOrder = i;
-            }
-
+            
             SaveToFile();
             cachedList = null;
             RefreshGridDisplay();
@@ -1662,16 +1662,55 @@ namespace CSOneNoteRibbonAddIn
                         // Show MessageBox for icon click on bookmark row
                         if (item.Type == "Bookmark" || item.Type == "Folder")
                         {
-                            item.IsExpanded = !item.IsExpanded;
-                            SaveToFile();
-                            RefreshGridDisplay(cachedList ?? null);
-                            return; // Optionally, skip further click processing
+                            bool hasChildren = items.Any(child => child.ParentId == item.Id);
+                            if (hasChildren)
+                            {
+                                int prevScrollIndex = grid.FirstDisplayedScrollingRowIndex;
+                                string prevId = item.Id;
+
+                                item.IsExpanded = !item.IsExpanded;
+                                SaveToFile();
+                                RefreshGridDisplay(cachedList ?? null);
+
+                                int targetRowIndex = -1;
+                                for (int i = 0; i < grid.Rows.Count; i++)
+                                {
+                                    if (grid.Rows[i].Cells["Id"].Value?.ToString() == prevId)
+                                    {
+                                        targetRowIndex = i;
+                                        grid.CurrentCell = grid.Rows[i].Cells["Name"];
+                                        grid.Rows[i].Selected = true;
+                                        break;
+                                    }
+                                }
+
+                                if (targetRowIndex >= 0)
+                                {
+                                    if (prevScrollIndex >= 0)
+                                    {
+                                        int scrollOffset = prevScrollIndex - targetRowIndex;
+                                        int newFirstRow = targetRowIndex + scrollOffset;
+
+                                        if (newFirstRow >= 0 && newFirstRow < grid.RowCount)
+                                            grid.FirstDisplayedScrollingRowIndex = newFirstRow;
+                                        else
+                                            grid.FirstDisplayedScrollingRowIndex = targetRowIndex;
+                                    }
+                                    else
+                                    {
+                                        grid.FirstDisplayedScrollingRowIndex = targetRowIndex;
+                                    }
+                                }
+                            }
+                            grid.Rows[e.RowIndex].Cells["Name"].ReadOnly = true;
+                            return;
                         }
+                        grid.Rows[e.RowIndex].Cells["Name"].ReadOnly = true;
+                        return;
                     }
                 }
-
-                // Check if Ctrl key is pressed
-                bool ctrlPressed = (Control.ModifierKeys & Keys.Control) == Keys.Control;
+                    // Check if Ctrl key is pressed
+                    bool ctrlPressed = (Control.ModifierKeys & Keys.Control) == Keys.Control;
                 if (grid.IsCurrentCellInEditMode)
                     return;
                 if (!ctrlPressed)
@@ -1707,16 +1746,16 @@ namespace CSOneNoteRibbonAddIn
                     }
                     else if (clickedColumn == "Name" && item.Type == "Folder")
                     {
-                        item.IsExpanded = !item.IsExpanded;
-                        SaveToFile();
-                        RefreshGridDisplay(cachedList ?? null);
+                        bool hasChildren = items.Any(child => child.ParentId == item.Id);
+                        if (hasChildren)
+                        {
+                            item.IsExpanded = !item.IsExpanded;
+                            SaveToFile();
+                            RefreshGridDisplay(cachedList ?? null);
+                        }
+                            
                     }
-                }
-                else if (clickedColumn == "Notes")
-                {
-                    grid.Rows[e.RowIndex].Cells["Notes"].ReadOnly = false;
-                    grid.BeginEdit(true);
-                }
+                }           
             }
             catch (Exception ex)
             {
@@ -2029,7 +2068,7 @@ namespace CSOneNoteRibbonAddIn
                 }
                 else if (colName == "Name")
                 {
-                    var newName = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString();    
+                    var newName = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString().Replace(",", "");    
                     if (!string.IsNullOrEmpty(newName) && newName != item.Name)
                     {
                         item.Name = newName;
