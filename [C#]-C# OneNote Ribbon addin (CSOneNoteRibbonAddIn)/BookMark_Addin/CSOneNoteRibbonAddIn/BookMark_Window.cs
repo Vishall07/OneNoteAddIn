@@ -1453,7 +1453,7 @@ namespace CSOneNoteRibbonAddIn
                     lastZoneText = zoneText;
 
                     Point rowLocation = grid.PointToScreen(new Point(rowRect.Left + 20, rowRect.Top + rowRect.Height / 2));
-                    gridDropToolTip.Show(zoneText, this, this.PointToClient(rowLocation), 5000);
+                    gridDropToolTip.Show(zoneText, this, this.PointToClient(rowLocation), 50000);
                 }
             }
             else
@@ -1568,10 +1568,43 @@ namespace CSOneNoteRibbonAddIn
             // Update sort orders
             for (int i = 0; i < siblings.Count; i++)
                 siblings[i].SortOrder = i;
-            
+
+            int prevScrollIndex = grid.FirstDisplayedScrollingRowIndex;
+            string prevId = targetId;
+
             SaveToFile();
             cachedList = null;
             RefreshGridDisplay();
+
+            int targetRowIndex = -1;
+            for (int i = 0; i < grid.Rows.Count; i++)
+            {
+                if (grid.Rows[i].Cells["Id"].Value?.ToString() == prevId)
+                {
+                    targetRowIndex = i;
+                    grid.CurrentCell = grid.Rows[i].Cells["Name"];
+                    grid.Rows[i].Selected = true;
+                    break;
+                }
+            }
+
+            if (targetRowIndex >= 0)
+            {
+                if (prevScrollIndex >= 0)
+                {
+                    int scrollOffset = prevScrollIndex - targetRowIndex;
+                    int newFirstRow = targetRowIndex + scrollOffset;
+
+                    if (newFirstRow >= 0 && newFirstRow < grid.RowCount)
+                        grid.FirstDisplayedScrollingRowIndex = newFirstRow;
+                    else
+                        grid.FirstDisplayedScrollingRowIndex = targetRowIndex;
+                }
+                else
+                {
+                    grid.FirstDisplayedScrollingRowIndex = targetRowIndex;
+                }
+            }
         }
         private bool IsDescendant(string potentialDescendantId, string ancestorId)
         {
