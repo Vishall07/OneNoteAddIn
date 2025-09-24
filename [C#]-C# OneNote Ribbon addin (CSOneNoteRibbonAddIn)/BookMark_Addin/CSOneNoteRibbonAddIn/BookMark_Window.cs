@@ -7,8 +7,10 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Runtime.InteropServices; 
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -780,14 +782,14 @@ namespace CSOneNoteRibbonAddIn
                     // Extract data from your model
                     string selectedId = model.Page?.Id ?? "";
                     string selectedScope = "page";
-                    string displayText = model.Page?.Name?.Replace(",", "") ?? "";
-                    string notebookName = notebookNames?.Replace(",", "") ?? "";
+                    string displayText = model.Page?.Name?.Replace(",", " ") ?? "";
+                    string notebookName = notebookNames?.Replace(",", " ") ?? "";
                     string notebookColor = model.NotebookColor ?? "";
-                    string sectionGroupName = sectionGroupNames?.Replace(",", "") ?? "No Section Group";
-                    string sectionName = sectionNames?.Replace(",", "") ?? "";
+                    string sectionGroupName = sectionGroupNames?.Replace(",", " ") ?? "No Section Group";
+                    string sectionName = sectionNames?.Replace(",", " ") ?? "";
                     string sectionColor = model.Section?.Color ?? "";
-                    string pageName = model.Page.Name?.Replace(",", "") ?? "";
-                    string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name?.Replace(",", "") ?? "";
+                    string pageName = model.Page.Name?.Replace(",", " ") ?? "";
+                    string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name?.Replace(",", " ") ?? "";
 
                     if (string.IsNullOrEmpty(selectedId))
                     {
@@ -978,6 +980,28 @@ namespace CSOneNoteRibbonAddIn
         #endregion
 
         #region HELPERS
+        public string StripHtmlTags(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return input;
+
+            // Decode encoded tags like &lt;a href="..."&gt;
+            if (input.IndexOf("&lt;", StringComparison.OrdinalIgnoreCase) >= 0
+                || input.IndexOf("&gt;", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                input = WebUtility.HtmlDecode(input);
+            }
+
+            // convert block/line tags to newlines (optional, keeps spacing)
+            input = Regex.Replace(input, @"<(br|p|div)[^>]*>", "\n", RegexOptions.IgnoreCase);
+
+            // remove remaining tags (allow . to match newlines)
+            var noTags = Regex.Replace(input, "<.*?>", string.Empty, RegexOptions.Singleline);
+
+            // collapse multiple spaces/newlines and trim
+            noTags = Regex.Replace(noTags, @"\s{2,}", " ").Trim();
+
+            return noTags;
+        }
         private void UpdateListScopeItems()
         {
             using (MethodTimerLog.Time("UpdateListScopeItems"))
@@ -987,21 +1011,21 @@ namespace CSOneNoteRibbonAddIn
                     var oneNoteApp = new OneNote.Application();
                     var currentWindow = oneNoteApp.Windows.CurrentWindow;
 
-                    // Get IDs and links
+                    // Notebook
                     string notebookId = currentWindow.CurrentNotebookId;
                     oneNoteApp.GetHyperlinkToObject(notebookId, null, out string notebookLink);
 
+                    // SectionGroup (optional)
                     string sectionGroupId = currentWindow.CurrentSectionGroupId;
                     string sectionGroupLink = null;
                     if (!string.IsNullOrEmpty(sectionGroupId))
-                    {
                         oneNoteApp.GetHyperlinkToObject(sectionGroupId, null, out sectionGroupLink);
-                    }
 
+                    // Section
                     string sectionId = currentWindow.CurrentSectionId;
                     oneNoteApp.GetHyperlinkToObject(sectionId, null, out string sectionLink);
 
-                    // Helper function to extract last part from URL
+                    // Small helper
                     string GetLastPathPart(string url)
                     {
                         if (string.IsNullOrEmpty(url))
@@ -1018,6 +1042,7 @@ namespace CSOneNoteRibbonAddIn
                     string notebookName = GetLastPathPart(notebookLink) ?? "Unnamed Notebook";
                     string sectionGroupName = !string.IsNullOrEmpty(sectionGroupLink) ? GetLastPathPart(sectionGroupLink) : "No Section Group";
                     string sectionName = null;
+
                     if (!string.IsNullOrEmpty(sectionLink))
                     {
                         int pathEnd = sectionLink.IndexOf(".one", StringComparison.OrdinalIgnoreCase);
@@ -1026,29 +1051,23 @@ namespace CSOneNoteRibbonAddIn
                             string upToExt = sectionLink.Substring(0, pathEnd);
                             string[] parts = upToExt.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
                             if (parts.Length > 0)
-                            {
                                 sectionName = System.Net.WebUtility.UrlDecode(parts[parts.Length - 1]);
-                            }
                         }
                     }
 
                     var model = GetCurrentNotebookModel(oneNoteApp);
-                    if (model == null)
-                        return;
+                    if (model == null) return;
 
                     string pageName = model.Page?.Name ?? "Unnamed Page";
                     string paraContent = model.Page?.Paragraphs?.FirstOrDefault()?.Name ?? "Unnamed Paragraph";
 
                     listScope.Font = new Font("Consolas", 12);
-                    // Update the list items dynamically
                     listScope.Items.Clear();
                     listScope.Items.Add($"Current Notebook      : {notebookName}");
                     listScope.Items.Add($"Current Section Group : {sectionGroupName}");
                     listScope.Items.Add($"Current Section       : {sectionName ?? "Unnamed Section"}");
                     listScope.Items.Add($"Current Page          : {pageName}");
                     listScope.Items.Add($"Current Paragraph     : {paraContent}");
-
-                    // Optionally select the first item
                     listScope.SelectedIndex = 0;
                 }
                 catch (Exception ex)
@@ -1065,73 +1084,35 @@ namespace CSOneNoteRibbonAddIn
 
                 try
                 {
-                    // Get current page ID from active OneNote window
                     var window = oneNoteApp.Windows.CurrentWindow;
                     string currentPageId = window.CurrentPageId;
                     if (string.IsNullOrEmpty(currentPageId))
                         return null;
 
-                    // Get only the current page XML (no full hierarchy)
-                    string pageXml;
-                    oneNoteApp.GetPageContent(currentPageId, out pageXml, OneNote.PageInfo.piBasic);
+                    // ✅ use GetHierarchy to fetch only metadata (lighter than GetPageContent)
+                    string pageHierarchyXml;
+                    oneNoteApp.GetHierarchy(currentPageId, OneNote.HierarchyScope.hsSelf, out pageHierarchyXml);
 
                     var doc = new XmlDocument();
-                    doc.LoadXml(pageXml);
+                    doc.LoadXml(pageHierarchyXml);
 
                     var nsmgr = new XmlNamespaceManager(doc.NameTable);
                     nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
 
-                    // Current page node
                     var pageNode = doc.SelectSingleNode("//one:Page", nsmgr);
                     if (pageNode == null)
                         return null;
 
-                    // Build current page model
                     var pageModel = new PageModel
                     {
                         Id = pageNode.Attributes?["ID"]?.Value,
                         Name = pageNode.Attributes?["name"]?.Value
                     };
 
-                    // Optionally load paragraphs/text inside page
+                    // load paragraph text only if you care
                     LoadParagraphs(oneNoteApp, pageModel);
+
                     model.Page = pageModel;
-
-                    // Section node (page’s direct parent)
-                    var sectionNode = pageNode.ParentNode;
-                    if (sectionNode == null || sectionNode.Name != "one:Section")
-                        return model; // stop if we can't find section
-
-                    var sectionModel = new SectionModel
-                    {
-                        Id = sectionNode.Attributes?["ID"]?.Value,
-                        Name = sectionNode.Attributes?["name"]?.Value,
-                        Color = sectionNode.Attributes?["color"]?.Value
-                    };
-                    model.Section = sectionModel;
-
-                    // Check if section belongs to SectionGroup
-                    var parentNode = sectionNode.ParentNode;
-                    if (parentNode != null && parentNode.Name == "one:SectionGroup")
-                    {
-                        model.SectionGroup = new SectionGroupModel
-                        {
-                            Id = parentNode.Attributes?["ID"]?.Value,
-                            Name = parentNode.Attributes?["name"]?.Value
-                        };
-
-                        // Notebook is above SectionGroup
-                        parentNode = parentNode.ParentNode;
-                    }
-
-                    // Notebook details
-                    if (parentNode != null && parentNode.Name == "one:Notebook")
-                    {
-                        model.NotebookId = parentNode.Attributes?["ID"]?.Value;
-                        model.NotebookName = parentNode.Attributes?["name"]?.Value;
-                        model.NotebookColor = parentNode.Attributes?["color"]?.Value;
-                    }
-
                     return model;
                 }
                 catch (Exception ex)
@@ -1150,34 +1131,34 @@ namespace CSOneNoteRibbonAddIn
                 {
                     string pageXml;
                     oneNoteApp.GetPageContent(page.Id, out pageXml, PageInfo.piAll);
-                    var doc = new System.Xml.XmlDocument();
+
+                    var doc = new XmlDocument();
                     doc.LoadXml(pageXml);
-                    var nsmgr = new System.Xml.XmlNamespaceManager(doc.NameTable);
+
+                    var nsmgr = new XmlNamespaceManager(doc.NameTable);
                     nsmgr.AddNamespace("one", "http://schemas.microsoft.com/office/onenote/2013/onenote");
 
                     string paraContent = null;
-                    string paraId = null;  // Optionally track paragraph id
+                    string paraId = null;
 
                     var selectedParagraphOE = doc.SelectSingleNode("//one:OE[@selected]", nsmgr);
 
                     if (selectedParagraphOE != null)
                     {
-                        // Try get selected text inside the selected paragraph
                         var selectedTextNodes = selectedParagraphOE.SelectNodes(".//one:T[@selected]", nsmgr);
                         if (selectedTextNodes != null && selectedTextNodes.Count > 0)
                         {
-                            paraContent = string.Join("", selectedTextNodes
-                                .Cast<System.Xml.XmlNode>()
+                            paraContent = string.Join(" ", selectedTextNodes
+                                .Cast<XmlNode>()
                                 .Select(n => n.InnerText?.Trim())
                                 .Where(t => !string.IsNullOrEmpty(t)));
                         }
 
-                        // If no selected text or empty, get full text of selected paragraph
                         if (string.IsNullOrEmpty(paraContent))
                         {
                             var allTextNodes = selectedParagraphOE.SelectNodes(".//one:T", nsmgr);
-                            paraContent = string.Join("", allTextNodes
-                                .Cast<System.Xml.XmlNode>()
+                            paraContent = string.Join(" ", allTextNodes
+                                .Cast<XmlNode>()
                                 .Select(n => n.InnerText?.Trim())
                                 .Where(t => !string.IsNullOrEmpty(t)));
                         }
@@ -1187,15 +1168,14 @@ namespace CSOneNoteRibbonAddIn
 
                     if (string.IsNullOrEmpty(paraContent))
                     {
-                        // No paragraph selected or no text found, fallback to first paragraph in page
                         var firstParaNode = doc.SelectSingleNode("//one:Outline/one:OEChildren/one:OE", nsmgr);
                         if (firstParaNode != null)
                         {
                             var firstParaTextNodes = firstParaNode.SelectNodes(".//one:T", nsmgr);
                             if (firstParaTextNodes != null && firstParaTextNodes.Count > 0)
                             {
-                                paraContent = string.Join("", firstParaTextNodes
-                                    .Cast<System.Xml.XmlNode>()
+                                paraContent = string.Join(" ", firstParaTextNodes
+                                    .Cast<XmlNode>()
                                     .Select(n => n.InnerText?.Trim())
                                     .Where(t => !string.IsNullOrEmpty(t)));
                             }
@@ -1205,6 +1185,7 @@ namespace CSOneNoteRibbonAddIn
 
                     if (!string.IsNullOrEmpty(paraContent))
                     {
+                        paraContent = StripHtmlTags(paraContent.Trim());
                         page.Paragraphs.Add(new ParagraphModel
                         {
                             Id = paraId ?? (page.Id + "_para"),
@@ -1218,7 +1199,7 @@ namespace CSOneNoteRibbonAddIn
                         "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     throw;
                 }
-            }      
+            }
         }
         private List<BookmarkItem> FlattenForDisplay(string parentId, int depth)
         {
@@ -1550,7 +1531,7 @@ namespace CSOneNoteRibbonAddIn
             // Remove dragged items from old location (avoid duplications)
             foreach (var did in draggedIds)
                 siblings.RemoveAll(i => i.Id == did);
-                
+
             // Insert at the calculated position
             foreach (var did in draggedIds)
             {
@@ -1559,10 +1540,6 @@ namespace CSOneNoteRibbonAddIn
                 {
                     item.ParentId = parentId;
                     siblings.Insert(insertIndex++, item);
-                }
-                else
-                {
-                    MessageBox.Show("item is NUll");
                 }
             }
 
@@ -2102,7 +2079,7 @@ namespace CSOneNoteRibbonAddIn
                 }
                 else if (colName == "Name")
                 {
-                    var newName = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString().Replace(",", "");    
+                    var newName = grid.Rows[e.RowIndex].Cells[e.ColumnIndex].Value?.ToString().Replace(",", " ");    
                     if (!string.IsNullOrEmpty(newName) && newName != item.Name)
                     {
                         item.Name = newName;
