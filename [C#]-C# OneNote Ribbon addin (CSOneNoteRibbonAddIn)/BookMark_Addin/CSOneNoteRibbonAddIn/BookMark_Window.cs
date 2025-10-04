@@ -1040,7 +1040,7 @@ namespace CSOneNoteRibbonAddIn
                     }
 
                     string notebookName = GetLastPathPart(notebookLink) ?? "Unnamed Notebook";
-                    string sectionGroupName = !string.IsNullOrEmpty(sectionGroupLink) ? GetLastPathPart(sectionGroupLink) : "No Section Group";
+                    string sectionGroupName = !string.IsNullOrEmpty(sectionGroupLink) ? GetLastPathPart(sectionGroupLink) : "";
                     string sectionName = null;
 
                     if (!string.IsNullOrEmpty(sectionLink))
@@ -1926,6 +1926,28 @@ namespace CSOneNoteRibbonAddIn
             var cellRect = grid.GetCellDisplayRectangle(grid.CurrentCell.ColumnIndex, grid.CurrentCell.RowIndex, true);
             editingControl.Location = new Point(cellRect.Left + totalOffset, editingControl.Location.Y);
             editingControl.Width = cellRect.Width - totalOffset;
+
+            // Add Home/End key behavior only once per editing session
+            editingControl.KeyDown -= EditingControl_KeyDown_HomeEnd;
+            editingControl.KeyDown += EditingControl_KeyDown_HomeEnd;
+        }
+        private void EditingControl_KeyDown_HomeEnd(object sender, KeyEventArgs e)
+        {
+            var tb = sender as TextBox;
+            if (tb == null) return;
+
+            if (e.KeyCode == Keys.Home)
+            {
+                tb.SelectionStart = 0;
+                tb.SelectionLength = 0;
+                e.Handled = true;
+            }
+            else if (e.KeyCode == Keys.End)
+            {
+                tb.SelectionStart = tb.Text.Length;
+                tb.SelectionLength = 0;
+                e.Handled = true;
+            }
         }
         private void List_KeyDown(object sender, KeyEventArgs e)
         {
